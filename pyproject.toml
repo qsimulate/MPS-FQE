@@ -1,0 +1,19 @@
+[project]
+name = "mps_fqe"
+description = "MPS backend for Openfermion-FQE"
+version = "0.0.0"
+authors = [ { name = "QSimulate" } ]
+
+dependencies = [
+    "fqe",
+    "pyblock3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "black"
+]
+
+
+[tool.black]
+max-line-length = 120
