@@ -1,6 +1,6 @@
 import functools
 import numpy as np
-from typing import List, Union, Optional
+from typing import List, Union, Optional, Tuple
 
 import fqe
 from pyblock3.algebra.flat import FlatSparseTensor
@@ -90,19 +90,19 @@ class MPSWavefunction(MPS):
     def canonicalize(self, center) -> "MPSWavefunction":
         return self.from_pyblock3_mps(super().canonicalize(center))
 
-    def compress(self, **opts) -> "MPSWavefunction":
+    def compress(self, **opts) -> Tuple["MPSWavefunction", float]:
         mps, merror = super().compress(**opts)
 
         return self.from_pyblock3_mps(mps), merror
 
-    def apply():
+    def apply(self):
         pass
 
-    def transform():
+    def transform(self):
         pass
 
-    def time_evolve():
+    def time_evolve(self):
         pass
 
-    def expectationValue():
+    def expectationValue(self):
         pass
