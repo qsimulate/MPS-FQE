@@ -23,3 +23,13 @@ max_line_length = 120
 [tool.black]
 line-length = 120
 target-version = ['py38']
+
+[[tool.mypy.overrides]]
+module = [
+    "fqe",
+    "pyblock3.algebra.mps",
+    "pyblock3.algebra.symmetry",
+    "pyblock3.algebra.flat"
+]
+
+ignore_missing_imports = true
