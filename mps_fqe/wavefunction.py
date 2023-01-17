@@ -10,17 +10,19 @@ from pyblock3.algebra.symmetry import SZ
 
 def decompose_mps(fci_tensor: FlatSparseTensor) -> List[FlatSparseTensor]:
     tensors = []
+
     while fci_tensor.ndim > 3:
-        u, s, v = fci_tensor.tensor_svd(2, pattern='+' * (fci_tensor.ndim - 1) + '-')
+        u, s, v = fci_tensor.tensor_svd(2, pattern="+" * (fci_tensor.ndim - 1) + "-")
         tensors.append(u)
         fci_tensor = np.tensordot(np.diag(s), v, axes=1)
     tensors.append(fci_tensor)
+
     return tensors
 
 
 class MPSWavefunction(MPS):
     @classmethod
-    def from_fqe_wavefunction(cls, fqe_wfn: fqe.Wavefunction) -> 'MPSWavefunction':
+    def from_fqe_wavefunction(cls, fqe_wfn: fqe.Wavefunction) -> "MPSWavefunction":
         sectors = fqe_wfn.sectors()
 
         def get_fci_FlatSparseTensor(sectors):
@@ -53,8 +55,7 @@ class MPSWavefunction(MPS):
         return cls(tensors=decompose_mps(fci_tensor))
 
     def to_fqe_wavefunction(self, broken: Optional[Union[List[str], str]] = None) -> fqe.Wavefunction:
-        """This is quite a memory intensive function. Will fail for all but the smallest MPS's.
-        """
+        """This is quite a memory intensive function. Will fail for all but the smallest MPS's."""
         fci_tensor = functools.reduce(lambda x, y: np.tensordot(x, y, axes=1), self.tensors)
         norb = fci_tensor.ndim - 2
         sectors = tuple(map(SZ.from_flat, set(fci_tensor.q_labels[:, -1])))
@@ -75,7 +76,7 @@ class MPSWavefunction(MPS):
         return fqe_wfn
 
     @classmethod
-    def from_pyblock3_mps(cls, mps: MPS) -> 'MPSWavefunction':
+    def from_pyblock3_mps(cls, mps: MPS) -> "MPSWavefunction":
         return cls(tensors=mps.tensors)
 
     def print_wfn(self) -> None:
@@ -86,11 +87,12 @@ class MPSWavefunction(MPS):
         print("BOND DIMENSIONS")
         print(self.show_bond_dims())
 
-    def canonicalize(self, center) -> 'MPSWavefunction':
+    def canonicalize(self, center) -> "MPSWavefunction":
         return self.from_pyblock3_mps(super().canonicalize(center))
 
-    def compress(self, **opts) -> 'MPSWavefunction':
+    def compress(self, **opts) -> "MPSWavefunction":
         mps, merror = super().compress(**opts)
+
         return self.from_pyblock3_mps(mps), merror
 
     def apply():
