@@ -11,13 +11,14 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+    "openfermionpyscf",
     "mypy",
     "black",
-    "flakehell",
+    "flakeheaven",
     "pylsp-mypy"
 ]
 
-[tool.flakehell]
+[tool.flakeheaven]
 max_line_length = 120
 
 [tool.black]
