@@ -35,14 +35,9 @@ filterwarnings = ["ignore:Please Use `OptimizeResult`.*:DeprecationWarning"]
 
 [[tool.mypy.overrides]]
 module = [
-    "fqe",
-    "pyblock3.algebra.mps",
-    "pyblock3.algebra.symmetry",
-    "pyblock3.algebra.flat",
-    "pyblock3.algebra.mpe",
-    "pyblock3.hamiltonian",
-    "pyblock3.fcidump",
-    "openfermion.chem",
+    "fqe.*",
+    "pyblock3.*",
+    "openfermion.*",
     "openfermionpyscf",
 ]
 

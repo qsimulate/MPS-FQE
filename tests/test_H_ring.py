@@ -47,7 +47,7 @@ def test_H_ring_evolve(amount_H, method):
     hamiltonian = fqe.get_restricted_hamiltonian((h1, numpy.einsum("ijlk", -0.5 * h2)), e_0=molecule.nuclear_repulsion)
     assert np.isclose(molecule.hf_energy, fqe_wf.expectationValue(hamiltonian))
 
-    dt = 0.1
+    dt = 0.05
     steps = 10
     evolved = fqe_wf
     for i in range(steps):
@@ -77,4 +77,15 @@ def test_H_ring_evolve(amount_H, method):
     mps_evolved_2 /= mps_evolved_2.norm()
 
     assert np.isclose(molecule.hf_energy, mps_evolved_2.expectationValue(MPO))
-    assert np.isclose(np.abs(mps_evolved_2.conj() @ mps_evolved), 1.0)
+    global_phase_shift = mps_evolved_2.conj() @ mps_evolved
+    assert np.isclose(np.abs(global_phase_shift), 1.0)
+
+    mps_evolved_2_to_fqe = mps_evolved.to_fqe_wavefunction()
+    for sector in evolved.sectors():
+        assert np.allclose(evolved.get_coeff(sector), mps_evolved_2_to_fqe.get_coeff(sector))
+
+    mps_evolved_2_to_fqe = mps_evolved_2.to_fqe_wavefunction()
+    for sector in evolved.sectors():
+        assert np.allclose(
+            evolved.get_coeff(sector), global_phase_shift * mps_evolved_2_to_fqe.get_coeff(sector), atol=1e-06
+        )

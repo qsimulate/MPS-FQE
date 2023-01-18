@@ -9,6 +9,8 @@ from pyblock3.algebra.mpe import MPE
 from pyblock3.algebra.integrate import rk4_apply
 from pyblock3.algebra.symmetry import SZ
 
+from mps_fqe import utils
+
 
 def decompose_mps(fci_tensor: FlatSparseTensor) -> List[FlatSparseTensor]:
     tensors = []
@@ -39,18 +41,17 @@ class MPSWavefunction(MPS):
 
             q_labels = []
             data_array = []
+
             for sector in sectors:
                 alpha_str = fqe_wfn.sector(sector).get_fcigraph().string_alpha_all().astype(int)
-                alpha_occ = np.array([tuple(reversed(bin(1 << ndim | x)[3:])) for x in alpha_str], dtype=np.uint32)
                 beta_str = fqe_wfn.sector(sector).get_fcigraph().string_beta_all().astype(int)
+                alpha_occ = np.array([tuple(reversed(bin(1 << ndim | x)[3:])) for x in alpha_str], dtype=np.uint32)
                 beta_occ = np.array([tuple(reversed(bin(1 << ndim | x)[3:])) for x in beta_str], dtype=np.uint32)
+
                 q_labels_temp = alpha_occ[:, None, :] + 2 * beta_occ[None, :, :]
                 q_label = np.array([physical_q_labels[i] for i in q_labels_temp.flatten()]).reshape(-1, ndim)
 
-                cumsum_alpha_occ = np.cumsum(alpha_occ, axis=1)
-                n_alpha, n_beta = sum(alpha_occ[0]), sum(beta_occ[0])
-                swaps = np.sum(cumsum_alpha_occ[:, None, :] * beta_occ[None, :, :], axis=2) + (n_alpha * n_beta)
-                fermionic_sign = np.where(swaps % 2 == 0, 1.0, -1.0)
+                fermionic_sign = utils.fqe_sign_change(fqe_wfn.sector(sector))
                 data_array.append((fermionic_sign * fqe_wfn.get_coeff(sector)).flatten())
 
                 vacuum = np.ones(len(q_label)) * SZ(0, 0, 0).to_flat()
@@ -59,9 +60,11 @@ class MPSWavefunction(MPS):
 
             q_labels_arr = np.vstack(q_labels)
             data = np.concatenate(data_array)
+
             return FlatSparseTensor(q_labels_arr, shapes, data)
 
         fci_tensor = get_fci_FlatSparseTensor(sectors)
+
         return cls(tensors=decompose_mps(fci_tensor))
 
     def to_fqe_wavefunction(self, broken: Optional[Union[List[str], str]] = None) -> fqe.Wavefunction:
@@ -82,6 +85,10 @@ class MPSWavefunction(MPS):
             aindx = sector.get_fcigraph().index_alpha(astring)
             bindx = sector.get_fcigraph().index_beta(bstring)
             sector.coeff[aindx, bindx] = data
+
+        for sector in fqe_wfn.sectors():
+            coeff = fqe_wfn.get_coeff(sector)
+            coeff *= utils.fqe_sign_change(fqe_wfn.sector(sector))
 
         return fqe_wfn
 
@@ -117,6 +124,7 @@ class MPSWavefunction(MPS):
         mps = self.copy()
         mpe = MPE(mps, hamiltonian, mps)
         mpe.tddmrg(bdims=[bdim], dt=-dt * 1j, iprint=0, n_sweeps=steps, normalize=False)
+
         return type(self)(tensors=mps.tensors)
 
     def rk4_apply(
@@ -126,8 +134,10 @@ class MPSWavefunction(MPS):
         dt = time / steps
         mps = self.copy()
         mps.opts = dict(max_bond_dim=bdim)
+
         for ii in range(steps):
             mps = rk4_apply((-dt * 1j) * hamiltonian, mps)
+
         return type(self)(tensors=mps.tensors)
 
     def time_evolve(
