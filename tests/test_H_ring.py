@@ -3,6 +3,7 @@ import numpy as np
 import fqe
 import numpy
 import pytest
+import itertools
 from pyblock3.hamiltonian import Hamiltonian
 from pyblock3.fcidump import FCIDUMP
 from openfermion.chem import make_atomic_ring
@@ -30,8 +31,8 @@ def generate_H_ring_data(molecule):
     return molecule
 
 
-@pytest.mark.parametrize("amount_H", list(range(2, 8)))
-def test_H_ring_evolve(amount_H):
+@pytest.mark.parametrize("amount_H,method", itertools.product(range(2, 8), ["rk4", "tddmrg"]))
+def test_H_ring_evolve(amount_H, method):
     molecule = get_H_ring_data(amount_H)
 
     nele = molecule.n_electrons
@@ -72,14 +73,8 @@ def test_H_ring_evolve(amount_H):
     mps_evolved = MPSWavefunction.from_fqe_wavefunction(evolved)
     assert np.isclose(molecule.hf_energy, mps_evolved.expectationValue(MPO))
 
-    mps_evolved_2 = mps.time_evolve(dt * steps, MPO, bdim=100, steps=steps, method='rk4')
+    mps_evolved_2 = mps.time_evolve(dt * steps, MPO, bdim=100, steps=steps, method=method)
     mps_evolved_2 /= mps_evolved_2.norm()
 
     assert np.isclose(molecule.hf_energy, mps_evolved_2.expectationValue(MPO))
     assert np.isclose(np.abs(mps_evolved_2.conj() @ mps_evolved), 1.0)
-
-    mps_evolved_3 = mps.time_evolve(dt * steps, MPO, bdim=100, steps=steps)
-    mps_evolved_3 /= mps_evolved_3.norm()
-
-    assert np.isclose(molecule.hf_energy, mps_evolved_3.expectationValue(MPO))
-    assert np.isclose(np.abs(mps_evolved_3.conj() @ mps_evolved), 1.0)
