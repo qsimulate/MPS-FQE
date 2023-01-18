@@ -11,8 +11,10 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+    "openfermion",
     "openfermionpyscf",
     "mypy",
+    "pytest",
     "black",
     "flakeheaven",
     "pylsp-mypy"
@@ -30,7 +32,11 @@ module = [
     "fqe",
     "pyblock3.algebra.mps",
     "pyblock3.algebra.symmetry",
-    "pyblock3.algebra.flat"
+    "pyblock3.algebra.flat",
+    "pyblock3.hamiltonian",
+    "pyblock3.fcidump",
+    "openfermion.chem",
+    "openfermionpyscf",
 ]
 
 ignore_missing_imports = true

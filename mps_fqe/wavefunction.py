@@ -104,5 +104,6 @@ class MPSWavefunction(MPS):
     def time_evolve(self):
         pass
 
-    def expectationValue(self):
+    def expectationValue(self, MPO: MPS) -> float:
+        return np.conj(self) @ MPO @ self
         pass
