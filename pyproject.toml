@@ -6,6 +6,7 @@ authors = [ { name = "QSimulate" } ]
 
 dependencies = [
     "fqe",
+    "block2",
     "pyblock3",
 ]
 
@@ -17,7 +18,8 @@ dev = [
     "pytest",
     "black",
     "flakeheaven",
-    "pylsp-mypy"
+    "pylsp",
+    "pylsp-mypy",
 ]
 
 [tool.flakeheaven]
@@ -37,6 +39,7 @@ module = [
     "pyblock3.algebra.mps",
     "pyblock3.algebra.symmetry",
     "pyblock3.algebra.flat",
+    "pyblock3.algebra.mpe",
     "pyblock3.hamiltonian",
     "pyblock3.fcidump",
     "openfermion.chem",
