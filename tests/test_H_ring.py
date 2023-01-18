@@ -75,6 +75,7 @@ def test_H_ring_evolve(amount_H, method):
 
     mps_evolved_2 = mps.time_evolve(dt * steps, MPO, bdim=100, steps=steps, method=method)
     mps_evolved_2 /= mps_evolved_2.norm()
+    mps_evolved_2 = MPSWavefunction(tensors=mps_evolved_2.tensors)
 
     assert np.isclose(molecule.hf_energy, mps_evolved_2.expectationValue(MPO))
     global_phase_shift = mps_evolved_2.conj() @ mps_evolved
