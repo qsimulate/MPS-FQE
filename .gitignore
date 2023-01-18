@@ -1,3 +1,4 @@
+tests/*.hdf5
 *.swp
 
 # Byte-compiled / optimized / DLL files
