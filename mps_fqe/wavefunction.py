@@ -118,12 +118,14 @@ class MPSWavefunction(MPS):
     def transform(self):
         pass
 
-    def tddmrg(self, time: float, hamiltonian: MPS, bdim: int = 100, steps: Optional[int] = None):
+    def tddmrg(
+        self, time: float, hamiltonian: MPS, bdim: int = 100, steps: Optional[int] = None, n_sub_sweeps: int = 2
+    ):
         steps = 1 if steps is None else steps
         dt = time / steps
         mps = self.copy()
         mpe = MPE(mps, hamiltonian, mps)
-        mpe.tddmrg(bdims=[bdim], dt=-dt * 1j, iprint=0, n_sweeps=steps, normalize=False)
+        mpe.tddmrg(bdims=[bdim], dt=-dt * 1j, iprint=0, n_sweeps=steps, normalize=False, n_sub_sweeps=n_sub_sweeps)
 
         return type(self)(tensors=mps.tensors)
 
