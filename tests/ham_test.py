@@ -43,9 +43,11 @@ def test_H_ring_energy(amount_H):
     fqe_wf.normalize()
 
     hamiltonian = fqe.get_restricted_hamiltonian((h1, numpy.einsum("ijlk", -0.5 * h2)), e_0=molecule.nuclear_repulsion)
+
     MPO1 = MPOHamiltonian.from_fqe_specific(fqe_wf=fqe_wf,
                                             fqe_ham=hamiltonian,
                                             flat=True,)
+    #Curiously missing a site from this instance
     MPO2 = MPOHamiltonian.from_fqe_hamiltonian(fqe_wf=fqe_wf,
                                                fqe_ham=hamiltonian,
                                                flat=True,)
