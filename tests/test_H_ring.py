@@ -68,7 +68,7 @@ def test_H_ring_evolve(amount_H, method):
     mps_evolved = MPSWavefunction.from_fqe_wavefunction(evolved)
     assert np.isclose(molecule.hf_energy, mps_evolved.expectationValue(MPO))
 
-    mps_evolved_2 = mps.time_evolve(dt * steps, MPO, bdim=bdim, steps=steps, method=method)  # 
+    mps_evolved_2 = mps.time_evolve(dt * steps, MPO, bdim=bdim, steps=steps, method=method)
     mps_evolved_2 /= mps_evolved_2.norm()
     mps_evolved_2 = MPSWavefunction(tensors=mps_evolved_2.tensors)
 
