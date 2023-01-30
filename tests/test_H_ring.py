@@ -58,20 +58,8 @@ def test_H_ring_evolve(amount_H, method):
     for i in range(steps):
         evolved = evolved.time_evolve(dt, hamiltonian)
     assert np.isclose(molecule.hf_energy, evolved.expectationValue(hamiltonian))
-    #MPO = MPOHamiltonian.from_fqe_specific(fqe_wf=fqe_wf, fqe_ham=hamiltonian, flat=True)
-    MPO = Hamiltonian(
-        FCIDUMP(
-            pg="c1",
-            n_sites=norbs,
-            n_elec=nele,
-            twos=sz,
-            h1e=h1,
-            g2e=numpy.einsum("iklj", h2),
-            const_e=molecule.nuclear_repulsion,
-        ),
-        flat=True,
-    ).build_qc_mpo()
 
+    MPO = MPOHamiltonian.from_fqe_specific(fqe_wf=fqe_wf, fqe_ham=hamiltonian, flat=True)
     mps = MPSWavefunction.from_fqe_wavefunction(fqe_wf).time_evolve(
         mini_dt * mini_steps, MPO, bdim=bdim, steps=mini_steps, method="rk4"
     )
@@ -80,7 +68,7 @@ def test_H_ring_evolve(amount_H, method):
     mps_evolved = MPSWavefunction.from_fqe_wavefunction(evolved)
     assert np.isclose(molecule.hf_energy, mps_evolved.expectationValue(MPO))
 
-    mps_evolved_2 = mps.time_evolve(dt * steps, MPO, bdim=bdim, steps=steps, method=method)
+    mps_evolved_2 = mps.time_evolve(dt * steps, MPO, bdim=bdim, steps=steps, method=method)  # 
     mps_evolved_2 /= mps_evolved_2.norm()
     mps_evolved_2 = MPSWavefunction(tensors=mps_evolved_2.tensors)
 
