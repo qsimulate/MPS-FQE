@@ -9,6 +9,7 @@ from pyblock3.fcidump import FCIDUMP
 from openfermion.chem import make_atomic_ring
 
 from mps_fqe.wavefunction import MPSWavefunction
+from mps_fqe.hamiltonian import MPOHamiltonian
 
 
 def get_H_ring_data(amount_H):
@@ -57,7 +58,7 @@ def test_H_ring_evolve(amount_H, method):
     for i in range(steps):
         evolved = evolved.time_evolve(dt, hamiltonian)
     assert np.isclose(molecule.hf_energy, evolved.expectationValue(hamiltonian))
-
+    #MPO = MPOHamiltonian.from_fqe_specific(fqe_wf=fqe_wf, fqe_ham=hamiltonian, flat=True)
     MPO = Hamiltonian(
         FCIDUMP(
             pg="c1",
