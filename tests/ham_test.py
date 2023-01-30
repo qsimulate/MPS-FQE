@@ -42,7 +42,7 @@ def test_H_ring_energy(amount_H):
     fqe_wf.set_wfn(strategy="hartree-fock")
     fqe_wf.normalize()
 
-    hamiltonian = fqe.get_restricted_hamiltonian((h1, numpy.einsum("ijlk", -0.5 * h2)), e_0=molecule.nuclear_repulsion)
+    hamiltonian = fqe.get_restricted_hamiltonian((h1, numpy.einsum("ijlk", -0.5*h2)), e_0=molecule.nuclear_repulsion)
 
     MPO1 = MPOHamiltonian.from_fqe_specific(fqe_wf=fqe_wf,
                                             fqe_ham=hamiltonian,
@@ -52,12 +52,11 @@ def test_H_ring_energy(amount_H):
                                                fqe_ham=hamiltonian,
                                                flat=True,)
     mps = MPSWavefunction.from_fqe_wavefunction(fqe_wf)
-    
     print(fqe_wf.expectationValue(hamiltonian))
     print(mps.expectationValue(MPO1))
     print(mps.expectationValue(MPO2))
     print(molecule.hf_energy)
 
 if __name__ == '__main__':
-    for nH in range(2, 3):
+    for nH in range(2, 7):
         test_H_ring_energy(nH)

@@ -73,8 +73,8 @@ def _get_restricted_ham_mpo(fqe_ham, fd, flat):
                     for lsite in range(0, n_sites):
                         for ijspin in [0, 1]:
                             for klspin in [0, 1]:
-                                yield v[isite, jsite, ksite, lsite] \
+                                yield 0.5*v[isite, jsite, ksite, lsite] \
                                     * (c[isite, ijspin] * c[ksite, klspin]
                                        * d[lsite, klspin] * d[jsite, ijspin])
-                                
-    return hamil.build_mpo(generate_terms).to_sparse()
+
+    return hamil.build_mpo(generate_terms, const=fqe_ham.e_0(), cutoff=0).to_sparse()

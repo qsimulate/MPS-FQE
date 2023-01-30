@@ -59,7 +59,7 @@ def test_H_ring_evolve(amount_H, method):
         evolved = evolved.time_evolve(dt, hamiltonian)
     assert np.isclose(molecule.hf_energy, evolved.expectationValue(hamiltonian))
 
-    MPO = MPOHamiltonian.from_fqe_specific(fqe_wf=fqe_wf, fqe_ham=hamiltonian, flat=True)
+    MPO = MPOHamiltonian.from_fqe_hamiltonian(fqe_wf=fqe_wf, fqe_ham=hamiltonian, flat=True)
     mps = MPSWavefunction.from_fqe_wavefunction(fqe_wf).time_evolve(
         mini_dt * mini_steps, MPO, bdim=bdim, steps=mini_steps, method="rk4"
     )
