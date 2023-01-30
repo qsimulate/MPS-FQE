@@ -64,7 +64,7 @@ def _get_restricted_ham_mpo(fqe_ham, fd, flat):
     hamil = Hamiltonian(fd, flat=flat)
     def generate_terms(n_sites, c, d):
         t = fqe_ham.tensors()[0]
-        v = numpy.einsum("ikjl", -1*fqe_ham.tensors()[1])
+        v = numpy.einsum("ikjl", -2 * fqe_ham.tensors()[1])
         for isite in range(0, n_sites):
             for jsite in range(0, n_sites):
                 for ispin in [0, 1]:
@@ -75,7 +75,7 @@ def _get_restricted_ham_mpo(fqe_ham, fd, flat):
                     for lsite in range(0, n_sites):
                         for ijspin in [0, 1]:
                             for klspin in [0, 1]:
-                                yield v[isite, jsite, ksite, lsite] \
+                                yield 0.5*v[isite, jsite, ksite, lsite] \
                                     * (c[isite, ijspin] * c[ksite, klspin]
                                        * d[lsite, klspin] * d[jsite, ijspin])
     return hamil.build_mpo(generate_terms, const=fqe_ham.e_0(), cutoff=0).to_sparse()
@@ -84,12 +84,14 @@ def _get_diagonal_coulomb_mpo(fqe_ham, fd, flat):
     #generate the diagonal coulomb MPO
     hamil = Hamiltonian(fd, flat=flat)
     def generate_terms(n_sites, c, d):
-        v = -1 * fqe_ham._tensor[2]
+        v = fqe_ham._tensor[2]
         for isite in range(0, n_sites):
             for jsite in range(0, n_sites):
                 for ispin in [0, 1]:
                     for jspin in [0, 1]:
                         yield v[isite, jsite] \
                             * (c[isite, ispin] * c[jsite, jspin]
-                               * d[isite, ispin] * d[jsite, jspin])
+                               * d[jsite, jspin] * d[isite, ispin])
     return hamil.build_mpo(generate_terms, const=fqe_ham.e_0(), cutoff=0).to_sparse()
+
+#def _get_
