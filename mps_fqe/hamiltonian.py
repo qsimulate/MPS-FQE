@@ -58,7 +58,6 @@ class MPOHamiltonian(Hamiltonian):
         elif isinstance(fqe_ham, diagonal_coulomb.DiagonalCoulomb):
             return _get_diagonal_coulomb_mpo(fqe_ham, fd, flat=flat)
 
-
 def _get_restricted_ham_mpo(fqe_ham, fd, flat):
     #generate the restricted hamiltonian MPO
     hamil = Hamiltonian(fd, flat=flat)
@@ -94,4 +93,3 @@ def _get_diagonal_coulomb_mpo(fqe_ham, fd, flat):
                                * d[jsite, jspin] * d[isite, ispin])
     return hamil.build_mpo(generate_terms, const=fqe_ham.e_0(), cutoff=0).to_sparse()
 
-#def _get_
