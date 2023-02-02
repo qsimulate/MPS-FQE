@@ -13,31 +13,6 @@ from pyblock3.algebra.mps import MPS
 
 class MPOHamiltonian(Hamiltonian):
     @classmethod
-    def from_fqe_specific(cls, fqe_wfn: FqeWavefunction,
-                          fqe_ham: FqeHamiltonian,
-                          pg="c1",
-                          flat=False) -> "MPS":
-        if not fqe_wfn.conserve_number():
-            raise TypeError('Wavefunction does not conserve number of particles.')
-        if not fqe_wfn.conserve_spin():
-            raise TypeError('Wavefunction does not conserve spin.')
-        #RestrictedHamiltonian
-        if isinstance(fqe_ham, restricted_hamiltonian.RestrictedHamiltonian):
-            h1e = fqe_ham.tensors()[0]
-            g2e = numpy.einsum("ikjl", -2*fqe_ham.tensors()[1])
-            fd = FCIDUMP(pg=pg,
-                         n_sites=fqe_wfn.norb(),
-                         n_elec=fqe_wfn._conserved['n'],
-                         twos=fqe_wfn._conserved['s_z'],
-                         h1e=h1e,
-                         g2e=g2e,
-                         const_e=fqe_ham.e_0()
-            )
-            return cls(fcidump=fd, flat=flat).build_qc_mpo()
-        else:
-            raise TypeError('Have not implemented this type of Hamiltonian yet.')
-
-    @classmethod
     def from_fqe_hamiltonian(cls, fqe_wfn: FqeWavefunction,
                              fqe_ham: FqeHamiltonian,
                              pg="c1",
