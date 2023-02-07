@@ -62,7 +62,8 @@ def test_diagonal_coulomb(n_electrons, sz=1, n_orbitals=4):
             vij[i, j] += 4*(i % n_orbitals + 1)*(j % n_orbitals + 1)*0.21
 
     fqe_wfn.set_wfn(strategy='random')
-    hamiltonian = fqe.get_diagonalcoulomb_hamiltonian(vij)
+    hamiltonian = fqe.get_diagonalcoulomb_hamiltonian(vij,
+                                                      e_0=numpy.random.rand())
     mpo = MPOHamiltonian.from_fqe_hamiltonian(fqe_wfn=fqe_wfn,
                                               fqe_ham=hamiltonian,
                                               flat=True)
@@ -70,12 +71,15 @@ def test_diagonal_coulomb(n_electrons, sz=1, n_orbitals=4):
     assert numpy.isclose(mps.expectationValue(mpo),
                          fqe_wfn.expectationValue(hamiltonian))
 
-@pytest.mark.parametrize("n_electrons,n_orbitals", [(2, 4), (6, 4)])
-def test_diagonal_hamiltonian(n_electrons, n_orbitals):
-    fqe_wfn = fqe.Wavefunction([[n_electrons, 2, n_orbitals]])
+@pytest.mark.parametrize("n_electrons,sz,n_orbitals", [(2, 2, 4),
+                                                       (6, 2, 4),
+                                                      (4, 0, 4)])
+def test_diagonal_hamiltonian(n_electrons, sz, n_orbitals):
+    fqe_wfn = fqe.Wavefunction([[n_electrons, sz, n_orbitals]])
     fqe_wfn.set_wfn(strategy='random')
     terms = numpy.random.rand(n_orbitals)
-    hamiltonian = fqe.get_diagonal_hamiltonian(terms)
+    hamiltonian = fqe.get_diagonal_hamiltonian(terms,
+                                               e_0=numpy.random.rand())
     mpo = MPOHamiltonian.from_fqe_hamiltonian(fqe_wfn=fqe_wfn,
                                               fqe_ham=hamiltonian,
                                               flat=True)
