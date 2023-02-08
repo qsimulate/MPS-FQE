@@ -6,6 +6,7 @@ import pytest
 import itertools
 from pyblock3.hamiltonian import Hamiltonian
 from pyblock3.fcidump import FCIDUMP
+from openfermion import FermionOperator
 from openfermion.chem import make_atomic_ring
 
 from mps_fqe.wavefunction import MPSWavefunction
@@ -13,8 +14,10 @@ from mps_fqe.hamiltonian import MPOHamiltonian
 
 
 def get_H_ring_data(amount_H):
-    filename = os.path.join(os.path.dirname(os.path.realpath(__file__)), f"Hring_{amount_H}.hdf5")
-    molecule = make_atomic_ring(amount_H, 1.0, "sto-3g", atom_type="H", charge=0, filename=filename)
+    filename = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                            f"Hring_{amount_H}.hdf5")
+    molecule = make_atomic_ring(amount_H, 1.0, "sto-3g", atom_type="H",
+                                charge=0, filename=filename)
 
     if os.path.isfile(filename):
         molecule.load()
@@ -43,7 +46,9 @@ def test_restricted(amount_H):
     fqe_wfn.set_wfn(strategy="hartree-fock")
     fqe_wfn.normalize()
 
-    hamiltonian = fqe.get_restricted_hamiltonian((h1, numpy.einsum("ijlk", -0.5*h2)), e_0=molecule.nuclear_repulsion)
+    hamiltonian = fqe.get_restricted_hamiltonian((h1,
+                                                  numpy.einsum("ijlk", -0.5*h2)),
+                                                 e_0=molecule.nuclear_repulsion)
 
     mpo = MPOHamiltonian.from_fqe_hamiltonian(fqe_wfn=fqe_wfn,
                                                fqe_ham=hamiltonian,
@@ -80,6 +85,28 @@ def test_diagonal_hamiltonian(n_electrons, sz, n_orbitals):
     terms = numpy.random.rand(n_orbitals)
     hamiltonian = fqe.get_diagonal_hamiltonian(terms,
                                                e_0=numpy.random.rand())
+    mpo = MPOHamiltonian.from_fqe_hamiltonian(fqe_wfn=fqe_wfn,
+                                              fqe_ham=hamiltonian,
+                                              flat=True)
+    mps = MPSWavefunction.from_fqe_wavefunction(fqe_wfn=fqe_wfn)
+    assert numpy.isclose(mps.expectationValue(mpo),
+                         fqe_wfn.expectationValue(hamiltonian))
+
+@pytest.mark.parametrize("n_electrons,sz,n_orbitals", [(2, 2, 4),
+                                                       (6, 2, 4),
+                                                       (4, 0, 4)])
+def test_sparse_hamiltonian(n_electrons, sz, n_orbitals):
+    fqe_wfn = fqe.Wavefunction([[n_electrons, sz, n_orbitals]])
+    fqe_wfn.set_wfn(strategy='random')
+    c = numpy.random.rand(4)
+    operator = c[0] * FermionOperator('0^ 0') \
+        + c[1] * FermionOperator('0^ 2 5^ 7') \
+        + c[2] * FermionOperator('6 0^') \
+        + c[3] * FermionOperator('3^ 3')
+
+    e_0 = numpy.random.rand()
+    hamiltonian = fqe.sparse_hamiltonian.SparseHamiltonian(operator,
+                                                           e_0=e_0)
     mpo = MPOHamiltonian.from_fqe_hamiltonian(fqe_wfn=fqe_wfn,
                                               fqe_ham=hamiltonian,
                                               flat=True)

@@ -75,7 +75,7 @@ def _get_diagonal_coulomb_mpo(fqe_ham, fd, flat):
     return hamil.build_mpo(generate_terms, const=fqe_ham.e_0(), cutoff=0).to_sparse()
 
 def _get_diagonal_mpo(fqe_ham, fd, flat):
-    #generate the diagonal coulomb MPO
+    #generate the diagonal MPO
     hamil = Hamiltonian(fd, flat=flat)
     t = fqe_ham.diag_values()
     def generate_terms(n_sites, c, d):
