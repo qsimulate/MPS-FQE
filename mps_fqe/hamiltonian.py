@@ -94,23 +94,18 @@ def _get_sparse_mpo(fqe_ham, fd, flat):
         def _operator_map(c, d, alpha_terms=None, beta_terms=None):
             alpha = [1]*2
             beta = [1]*2
+            d_c_ops = [d, c]
             for at in alpha_terms:
-                if at[1] == 1:
-                    alpha[1] *= c[at[0], 0]
-                elif at[1] == 0:
-                    alpha[0] *= d[at[0], 0]
+                alpha[at[1]] *= d_c_ops[at[1]][at[0],0]
             for bt in beta_terms:
-                if bt[1] == 1:
-                    beta[1] *= c[bt[0], 1]
-                elif bt[1] == 0:
-                    beta[0] *= d[bt[0], 1]
+                beta[bt[1]] *= d_c_ops[bt[1]][bt[0],1]
             return {'alpha': alpha[1] * alpha[0],
                     'beta': beta[1] * beta[0] }
-                    
+
         for term in fqe_ham.terms():
             coeff = term[0]
-            operator_map = _operator_map(c, d, alpha_terms=term[1], beta_terms=term[2])
-            yield term[0] * operator_map["alpha"] * operator_map["beta"]
+            mpo_operators = _operator_map(c, d, alpha_terms=term[1], beta_terms=term[2])
+            yield term[0] * mpo_operators["alpha"] * mpo_operators["beta"]
             
     return hamil.build_mpo(generate_terms, const=fqe_ham.e_0(), cutoff=0).to_sparse()
 
