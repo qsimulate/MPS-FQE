@@ -11,6 +11,14 @@ from pyblock3.hamiltonian import Hamiltonian
 from pyblock3.fcidump import FCIDUMP
 from pyblock3.algebra.mps import MPS
 
+
+allowed_types = [
+    sparse_hamiltonian.SparseHamiltonian,
+    diagonal_coulomb.DiagonalCoulomb,
+    diagonal_hamiltonian.Diagonal,
+    restricted_hamiltonian.RestrictedHamiltonian
+]
+
 class MPOHamiltonian(Hamiltonian):
     @classmethod
     def from_fqe_hamiltonian(cls, fqe_wfn: FqeWavefunction,
@@ -28,18 +36,12 @@ class MPOHamiltonian(Hamiltonian):
                      twos=fqe_wfn._conserved['s_z'],
                      const_e=fqe_ham.e_0())
 
-        if isinstance(fqe_ham, restricted_hamiltonian.RestrictedHamiltonian):
-            return _get_restricted_ham_mpo(fqe_ham, fd, flat=flat)
-        elif isinstance(fqe_ham, diagonal_coulomb.DiagonalCoulomb):
-            return _get_diagonal_coulomb_mpo(fqe_ham, fd, flat=flat)
-        elif isinstance(fqe_ham, diagonal_hamiltonian.Diagonal):
-            return _get_diagonal_mpo(fqe_ham, fd, flat=flat)
-        elif isinstance(fqe_ham, sparse_hamiltonian.SparseHamiltonian):
-            return _get_sparse_mpo(fqe_ham, fd, flat=flat)
-        else:
-            return TypeError("Have not implemented MPO for {}".format(type(fqe_ham)))
+        for typ in allowed_types:
+            if isinstance(fqe_ham, typ):
+                return hamiltonian_function_dict[typ](fqe_ham, fd, flat)        
+        raise TypeError("Have not implemented MPO for {}".format(type(fqe_ham)))
 
-def _get_restricted_ham_mpo(fqe_ham, fd, flat):
+def _get_restricted_mpo(fqe_ham, fd, flat):
     #generate the restricted hamiltonian MPO
     hamil = Hamiltonian(fd, flat=flat)
     def generate_terms(n_sites, c, d):
@@ -111,3 +113,10 @@ def _get_sparse_mpo(fqe_ham, fd, flat):
             yield term[0] * operator_map["alpha"] * operator_map["beta"]
             
     return hamil.build_mpo(generate_terms, const=fqe_ham.e_0(), cutoff=0).to_sparse()
+
+hamiltonian_function_dict = {
+    sparse_hamiltonian.SparseHamiltonian: _get_sparse_mpo,
+    diagonal_coulomb.DiagonalCoulomb: _get_diagonal_coulomb_mpo,
+    diagonal_hamiltonian.Diagonal: _get_diagonal_mpo,
+    restricted_hamiltonian.RestrictedHamiltonian: _get_restricted_mpo
+}

@@ -113,3 +113,4 @@ def test_sparse_hamiltonian(n_electrons, sz, n_orbitals):
     mps = MPSWavefunction.from_fqe_wavefunction(fqe_wfn=fqe_wfn)
     assert numpy.isclose(mps.expectationValue(mpo),
                          fqe_wfn.expectationValue(hamiltonian))
+    
