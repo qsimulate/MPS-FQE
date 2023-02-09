@@ -98,11 +98,11 @@ def test_diagonal_hamiltonian(n_electrons, sz, n_orbitals):
 def test_sparse_hamiltonian(n_electrons, sz, n_orbitals):
     fqe_wfn = fqe.Wavefunction([[n_electrons, sz, n_orbitals]])
     fqe_wfn.set_wfn(strategy='random')
-    c = numpy.random.rand(4)
-    operator = c[0] * FermionOperator('0^ 0') \
-        + c[1] * FermionOperator('0^ 2 5^ 7') \
-        + c[2] * FermionOperator('6 0^') \
-        + c[3] * FermionOperator('3^ 3')
+    coeffs = numpy.random.rand(4)
+    operator = coeffs[0] * FermionOperator('0^ 0') \
+        + coeffs[1] * FermionOperator('0^ 2 5^ 7') \
+        + coeffs[2] * FermionOperator('6 0^') \
+        + coeffs[3] * FermionOperator('3^ 3')
 
     e_0 = numpy.random.rand()
     hamiltonian = fqe.sparse_hamiltonian.SparseHamiltonian(operator,

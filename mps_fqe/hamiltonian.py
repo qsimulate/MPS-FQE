@@ -91,20 +91,18 @@ def _get_sparse_mpo(fqe_ham, fd, flat):
     hamil = Hamiltonian(fd, flat=flat)
     def generate_terms(n_sites, c, d):
         #Define mapping between representationas
-        def _operator_map(c, d, alpha_terms=None, beta_terms=None):
-            alpha = [1]*2
-            beta = [1]*2
-            d_c_ops = [d, c]
+        def _operator_map(d_c_ops=[d, c], alpha_terms=None, beta_terms=None):
+            alpha_prod = [1]*2
+            beta_prod = [1]*2
             for at in alpha_terms:
-                alpha[at[1]] *= d_c_ops[at[1]][at[0],0]
+                alpha_prod[at[1]] *= d_c_ops[at[1]][at[0],0]
             for bt in beta_terms:
-                beta[bt[1]] *= d_c_ops[bt[1]][bt[0],1]
-            return {'alpha': alpha[1] * alpha[0],
-                    'beta': beta[1] * beta[0] }
+                beta_prod[bt[1]] *= d_c_ops[bt[1]][bt[0],1]
+            return {'alpha': alpha_prod[1] * alpha_prod[0],
+                    'beta': beta_prod[1] * beta_prod[0] }
 
         for term in fqe_ham.terms():
-            coeff = term[0]
-            mpo_operators = _operator_map(c, d, alpha_terms=term[1], beta_terms=term[2])
+            mpo_operators = _operator_map([d, c], alpha_terms=term[1], beta_terms=term[2])
             yield term[0] * mpo_operators["alpha"] * mpo_operators["beta"]
             
     return hamil.build_mpo(generate_terms, const=fqe_ham.e_0(), cutoff=0).to_sparse()
