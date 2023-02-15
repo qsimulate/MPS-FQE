@@ -1,4 +1,3 @@
-import numpy as np
 from mps_fqe.wavefunction import MPSWavefunction
 import fqe
 

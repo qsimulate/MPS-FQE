@@ -1,35 +1,12 @@
-import os
 import numpy
 from numpy import einsum
 
 import pytest
 import fqe
 from openfermion import FermionOperator
-from openfermion.chem import make_atomic_ring
 from mps_fqe.wavefunction import MPSWavefunction
 from mps_fqe.hamiltonian import MPOHamiltonian
-
-
-def get_H_ring_data(amount_H):
-    filename = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                            f"Hring_{amount_H}.hdf5")
-    molecule = make_atomic_ring(amount_H, 1.0, "sto-3g", atom_type="H",
-                                charge=0, filename=filename)
-
-    if os.path.isfile(filename):
-        molecule.load()
-
-    if molecule.hf_energy is None:
-        molecule = generate_H_ring_data(molecule)
-    return molecule
-
-
-def generate_H_ring_data(molecule):
-    from openfermionpyscf import run_pyscf
-
-    molecule = run_pyscf(molecule, run_scf=True)
-    molecule.save()
-    return molecule
+from test_H_ring import get_H_ring_data
 
 
 @pytest.mark.parametrize("amount_H", range(2, 5))
@@ -44,12 +21,11 @@ def test_restricted(amount_H):
     fqe_wfn.set_wfn(strategy="hartree-fock")
     fqe_wfn.normalize()
     e_0 = molecule.nuclear_repulsion
-    hamiltonian = fqe.get_restricted_hamiltonian((h1, einsum("ijlk", -0.5*h2)),
+    hamiltonian = fqe.get_restricted_hamiltonian((h1,
+                                                  einsum("ijlk", -0.5 * h2)),
                                                  e_0=e_0)
 
-    mpo = MPOHamiltonian.from_fqe_hamiltonian(fqe_wfn=fqe_wfn,
-                                              fqe_ham=hamiltonian,
-                                              flat=True,)
+    mpo = MPOHamiltonian.from_fqe_hamiltonian(fqe_ham=hamiltonian)
     mps = MPSWavefunction.from_fqe_wavefunction(fqe_wfn)
 
     assert numpy.isclose(mps.expectationValue(mpo),
@@ -69,9 +45,7 @@ def test_diagonal_coulomb(n_electrons, sz=1, n_orbitals=4):
     fqe_wfn.set_wfn(strategy='random')
     hamiltonian = fqe.get_diagonalcoulomb_hamiltonian(vij,
                                                       e_0=numpy.random.rand())
-    mpo = MPOHamiltonian.from_fqe_hamiltonian(fqe_wfn=fqe_wfn,
-                                              fqe_ham=hamiltonian,
-                                              flat=True)
+    mpo = MPOHamiltonian.from_fqe_hamiltonian(fqe_ham=hamiltonian)
     mps = MPSWavefunction.from_fqe_wavefunction(fqe_wfn=fqe_wfn)
     assert numpy.isclose(mps.expectationValue(mpo),
                          fqe_wfn.expectationValue(hamiltonian),
@@ -87,9 +61,7 @@ def test_diagonal_hamiltonian(n_electrons, sz, n_orbitals):
     terms = numpy.random.rand(n_orbitals)
     hamiltonian = fqe.get_diagonal_hamiltonian(terms,
                                                e_0=numpy.random.rand())
-    mpo = MPOHamiltonian.from_fqe_hamiltonian(fqe_wfn=fqe_wfn,
-                                              fqe_ham=hamiltonian,
-                                              flat=True)
+    mpo = MPOHamiltonian.from_fqe_hamiltonian(fqe_ham=hamiltonian)
     mps = MPSWavefunction.from_fqe_wavefunction(fqe_wfn=fqe_wfn)
     assert numpy.isclose(mps.expectationValue(mpo),
                          fqe_wfn.expectationValue(hamiltonian),
@@ -98,7 +70,7 @@ def test_diagonal_hamiltonian(n_electrons, sz, n_orbitals):
 
 @pytest.mark.parametrize("n_electrons,sz,n_orbitals", [(2, 2, 4),
                                                        (6, 2, 4),
-                                                       (4, 0, 4)])
+                                                       (4, 0, 6)])
 def test_sparse_hamiltonian(n_electrons, sz, n_orbitals):
     fqe_wfn = fqe.Wavefunction([[n_electrons, sz, n_orbitals]])
     fqe_wfn.set_wfn(strategy='random')
@@ -111,10 +83,16 @@ def test_sparse_hamiltonian(n_electrons, sz, n_orbitals):
     e_0 = numpy.random.rand()
     hamiltonian = fqe.sparse_hamiltonian.SparseHamiltonian(operator,
                                                            e_0=e_0)
-    mpo = MPOHamiltonian.from_fqe_hamiltonian(fqe_wfn=fqe_wfn,
-                                              fqe_ham=hamiltonian,
-                                              flat=True)
+    mpo = MPOHamiltonian.from_fqe_hamiltonian(fqe_ham=hamiltonian,
+                                              n_sites=n_orbitals)
     mps = MPSWavefunction.from_fqe_wavefunction(fqe_wfn=fqe_wfn)
     assert numpy.isclose(mps.expectationValue(mpo),
                          fqe_wfn.expectationValue(hamiltonian),
                          atol=1e-12)
+
+
+def test_sparse_nsites_error():
+    operator = FermionOperator('0^ 0')
+    hamiltonian = fqe.sparse_hamiltonian.SparseHamiltonian(operator)
+    with pytest.raises(ValueError):
+        MPOHamiltonian.from_fqe_hamiltonian(fqe_ham=hamiltonian)
