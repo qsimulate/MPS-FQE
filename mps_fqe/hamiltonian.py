@@ -1,5 +1,6 @@
 import numpy
 import itertools
+from typing import Optional
 
 from fqe import Wavefunction as FqeWavefunction
 from fqe.hamiltonians.hamiltonian import Hamiltonian as FqeHamiltonian
@@ -25,7 +26,7 @@ class MPOHamiltonian(Hamiltonian):
     @classmethod
     def from_fqe_hamiltonian(cls,
                              fqe_ham: FqeHamiltonian,
-                             n_sites: int = None,
+                             n_sites: Optional[int] = None,
                              pg: str = "c1",
                              flat: bool = True,
                              cutoff: float = 1E-9) -> "MPS":
@@ -42,7 +43,7 @@ class MPOHamiltonian(Hamiltonian):
         for typ in allowed_types:
             if isinstance(fqe_ham, typ):
                 return getattr(cls,
-                               MPOHamiltonian\
+                               MPOHamiltonian
                                ._hamiltonian_function_dict[typ])(fqe_ham,
                                                                  fd,
                                                                  flat)
