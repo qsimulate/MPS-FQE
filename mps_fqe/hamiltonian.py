@@ -20,13 +20,6 @@ allowed_types = [
     restricted_hamiltonian.RestrictedHamiltonian
 ]
 
-_hamiltonian_function_dict = {
-    sparse_hamiltonian.SparseHamiltonian: "get_sparse_mpo",
-    diagonal_coulomb.DiagonalCoulomb: "get_diagonal_coulomb_mpo",
-    diagonal_hamiltonian.Diagonal: "get_diagonal_mpo",
-    restricted_hamiltonian.RestrictedHamiltonian: "get_restricted_mpo"
-}
-
 
 class MPOHamiltonian(Hamiltonian):
     @classmethod
@@ -48,9 +41,11 @@ class MPOHamiltonian(Hamiltonian):
 
         for typ in allowed_types:
             if isinstance(fqe_ham, typ):
-                return getattr(cls, _hamiltonian_function_dict[typ])(fqe_ham,
-                                                                     fd,
-                                                                     flat)
+                return getattr(cls,
+                               MPOHamiltonian\
+                               ._hamiltonian_function_dict[typ])(fqe_ham,
+                                                                 fd,
+                                                                 flat)
         raise TypeError(f"Have not implemented MPO for {type(fqe_ham)}")
 
     @classmethod
@@ -138,3 +133,10 @@ class MPOHamiltonian(Hamiltonian):
         return hamil.build_mpo(generate_terms,
                                const=fqe_ham.e_0(),
                                cutoff=0).to_sparse()
+
+    _hamiltonian_function_dict = {
+        sparse_hamiltonian.SparseHamiltonian: "get_sparse_mpo",
+        diagonal_coulomb.DiagonalCoulomb: "get_diagonal_coulomb_mpo",
+        diagonal_hamiltonian.Diagonal: "get_diagonal_mpo",
+        restricted_hamiltonian.RestrictedHamiltonian: "get_restricted_mpo"
+    }
