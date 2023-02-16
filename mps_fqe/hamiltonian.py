@@ -21,14 +21,15 @@ allowed_types = [
 ]
 
 
-class MPOHamiltonian(Hamiltonian):
+class MPOHamiltonian(MPS):
     @classmethod
     def from_fqe_hamiltonian(cls,
                              fqe_ham: FqeHamiltonian,
                              n_sites: Optional[int] = None,
                              pg: str = "c1",
                              flat: bool = True,
-                             cutoff: float = 1E-9) -> "MPS":
+                             cutoff: float = 1E-12,
+                             max_bond_dim: int = -1) -> "MPS":
         if n_sites is None:
             if isinstance(fqe_ham, sparse_hamiltonian.SparseHamiltonian):
                 raise ValueError("Must provide n_sites for sparse Hamiltonian")
@@ -42,16 +43,22 @@ class MPOHamiltonian(Hamiltonian):
         for typ in allowed_types:
             if isinstance(fqe_ham, typ):
                 return getattr(cls,
-                               MPOHamiltonian
-                               ._hamiltonian_function_dict[typ])(fqe_ham,
-                                                                 fd,
-                                                                 flat)
+                               cls._hamiltonian_func_dict[typ])(fqe_ham,
+                                                                fd,
+                                                                flat,
+                                                                cutoff,
+                                                                max_bond_dim)
         raise TypeError(f"Have not implemented MPO for {type(fqe_ham)}")
 
     @classmethod
-    def get_sparse_mpo(cls, fqe_ham, fd, flat):
+    def get_sparse_mpo(cls,
+                       fqe_ham: FqeHamiltonian,
+                       fd: FCIDUMP,
+                       flat: bool = True,
+                       cutoff: float = 1E-12,
+                       max_bond_dim: int = -1) -> "MPS":
         # Generate the sparse Hamiltonian MPO
-        hamil = cls(fd, flat=flat)
+        hamil = Hamiltonian(fd, flat=flat)
 
         def generate_terms(n_sites, c, d):
             # Define mapping between representationas
@@ -71,14 +78,22 @@ class MPOHamiltonian(Hamiltonian):
                                               beta_terms)
                 yield coeff * mpo_operators["alpha"] * mpo_operators["beta"]
 
-        return hamil.build_mpo(generate_terms,
-                               const=fqe_ham.e_0(),
-                               cutoff=0).to_sparse()
+        mpo = hamil.build_mpo(generate_terms,
+                              const=fqe_ham.e_0(),
+                              cutoff=cutoff,
+                              max_bond_dim=max_bond_dim).to_sparse()
+        return cls(tensors=mpo.tensors, const=mpo.const,
+                   opts=mpo.opts, dq=mpo.dq).to_sparse()
 
     @classmethod
-    def get_restricted_mpo(cls, fqe_ham, fd, flat):
+    def get_restricted_mpo(cls,
+                           fqe_ham: FqeHamiltonian,
+                           fd: FCIDUMP,
+                           flat: bool = True,
+                           cutoff: float = 1E-12,
+                           max_bond_dim: int = -1) -> "MPS":
         # Generate the restricted hamiltonian MPO
-        hamil = cls(fd, flat=flat)
+        hamil = Hamiltonian(fd, flat=flat)
 
         def generate_terms(n_sites, c, d):
             t = fqe_ham.tensors()[0]
@@ -96,12 +111,20 @@ class MPOHamiltonian(Hamiltonian):
                             * (c[isite, ijspin] * c[ksite, klspin]
                                * d[lsite, klspin] * d[jsite, ijspin])
 
-        return hamil.build_mpo(generate_terms,
-                               const=fqe_ham.e_0(),
-                               cutoff=0).to_sparse()
+        mpo = hamil.build_mpo(generate_terms,
+                              const=fqe_ham.e_0(),
+                              cutoff=cutoff,
+                              max_bond_dim=max_bond_dim).to_sparse()
+        return cls(tensors=mpo.tensors, const=mpo.const,
+                   opts=mpo.opts, dq=mpo.dq).to_sparse()
 
     @classmethod
-    def get_diagonal_coulomb_mpo(cls, fqe_ham, fd, flat):
+    def get_diagonal_coulomb_mpo(cls,
+                                 fqe_ham: FqeHamiltonian,
+                                 fd: FCIDUMP,
+                                 flat: bool = True,
+                                 cutoff: float = 1E-12,
+                                 max_bond_dim: int = -1) -> "MPS":
         # Generate the diagonal coulomb MPO
         hamil = Hamiltonian(fd, flat=flat)
 
@@ -115,12 +138,20 @@ class MPOHamiltonian(Hamiltonian):
                                 * (c[isite, ispin] * c[jsite, jspin]
                                    * d[jsite, jspin] * d[isite, ispin])
 
-        return hamil.build_mpo(generate_terms,
-                               const=fqe_ham.e_0(),
-                               cutoff=0).to_sparse()
+        mpo = hamil.build_mpo(generate_terms,
+                              const=fqe_ham.e_0(),
+                              cutoff=cutoff,
+                              max_bond_dim=max_bond_dim).to_sparse()
+        return cls(tensors=mpo.tensors, const=mpo.const,
+                   opts=mpo.opts, dq=mpo.dq).to_sparse()
 
     @classmethod
-    def get_diagonal_mpo(cls, fqe_ham, fd, flat):
+    def get_diagonal_mpo(cls,
+                         fqe_ham: FqeHamiltonian,
+                         fd: FCIDUMP,
+                         flat: bool = True,
+                         cutoff: float = 1E-12,
+                         max_bond_dim: int = -1) -> "MPS":
         # Generate the diagonal MPO
         hamil = Hamiltonian(fd, flat=flat)
         t = fqe_ham.diag_values()
@@ -130,11 +161,14 @@ class MPOHamiltonian(Hamiltonian):
                 for ispin in [0, 1]:
                     yield t[isite] * (c[isite, ispin] * d[isite, ispin])
 
-        return hamil.build_mpo(generate_terms,
-                               const=fqe_ham.e_0(),
-                               cutoff=0).to_sparse()
+        mpo = hamil.build_mpo(generate_terms,
+                              const=fqe_ham.e_0(),
+                              cutoff=cutoff,
+                              max_bond_dim=max_bond_dim)
+        return cls(tensors=mpo.tensors, const=mpo.const,
+                   opts=mpo.opts, dq=mpo.dq).to_sparse()
 
-    _hamiltonian_function_dict = {
+    _hamiltonian_func_dict = {
         sparse_hamiltonian.SparseHamiltonian: "get_sparse_mpo",
         diagonal_coulomb.DiagonalCoulomb: "get_diagonal_coulomb_mpo",
         diagonal_hamiltonian.Diagonal: "get_diagonal_mpo",
