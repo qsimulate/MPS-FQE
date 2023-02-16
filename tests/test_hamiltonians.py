@@ -3,6 +3,8 @@ from numpy import einsum
 
 import pytest
 import fqe
+from pyblock3.hamiltonian import Hamiltonian
+from pyblock3.fcidump import FCIDUMP
 from openfermion import FermionOperator
 from mps_fqe.wavefunction import MPSWavefunction
 from mps_fqe.hamiltonian import MPOHamiltonian
@@ -96,3 +98,44 @@ def test_sparse_nsites_error():
     hamiltonian = fqe.sparse_hamiltonian.SparseHamiltonian(operator)
     with pytest.raises(ValueError):
         MPOHamiltonian.from_fqe_hamiltonian(fqe_ham=hamiltonian)
+
+
+def test_from_pyblock3_mpo():
+    molecule = get_H_ring_data(5)
+
+    nele = molecule.n_electrons
+    sz = molecule.multiplicity - 1
+    norbs = molecule.n_orbitals
+    h1, h2 = molecule.get_integrals()
+
+    fqe_wfn = fqe.Wavefunction([[nele, sz, norbs]])
+    fqe_wfn.set_wfn(strategy="hartree-fock")
+    fqe_wfn.normalize()
+
+    e_0 = molecule.nuclear_repulsion
+    hamiltonian = fqe.get_restricted_hamiltonian((h1,
+                                                  numpy.einsum("ijlk",
+                                                               -0.5 * h2)),
+                                                 e_0=e_0)
+
+    mps = MPSWavefunction.from_fqe_wavefunction(fqe_wfn)
+    pyblock3_mpo = Hamiltonian(
+        FCIDUMP(
+            pg="c1",
+            n_sites=norbs,
+            n_elec=nele,
+            twos=sz,
+            h1e=h1,
+            g2e=numpy.einsum("iklj", h2),
+            const_e=molecule.nuclear_repulsion,
+        ),
+        flat=True,
+    ).build_qc_mpo()
+    mpo = MPOHamiltonian.from_pyblock_mpo(pyblock3_mpo)
+
+    assert(numpy.isclose(molecule.hf_energy,
+                         mps.expectationValue(pyblock3_mpo),
+                         atol=1e-12))
+    assert(numpy.isclose(mps.expectationValue(pyblock3_mpo),
+                         mps.expectationValue(mpo),
+                         atol=1e-12))

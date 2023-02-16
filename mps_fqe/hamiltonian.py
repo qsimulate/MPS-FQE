@@ -51,6 +51,11 @@ class MPOHamiltonian(MPS):
         raise TypeError(f"Have not implemented MPO for {type(fqe_ham)}")
 
     @classmethod
+    def from_pyblock_mpo(cls, mpo: MPS) -> "MPS":
+        return cls(tensors=mpo.tensors, const=mpo.const,
+                   opts=mpo.opts, dq=mpo.dq).to_sparse()
+
+    @classmethod
     def get_sparse_mpo(cls,
                        fqe_ham: FqeHamiltonian,
                        fd: FCIDUMP,
