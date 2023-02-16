@@ -2,7 +2,6 @@ import numpy
 import itertools
 from typing import Optional
 
-from fqe import Wavefunction as FqeWavefunction
 from fqe.hamiltonians.hamiltonian import Hamiltonian as FqeHamiltonian
 from fqe.hamiltonians import diagonal_coulomb, diagonal_hamiltonian, \
     general_hamiltonian, gso_hamiltonian, \
