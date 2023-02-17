@@ -86,7 +86,7 @@ class MPOHamiltonian(MPS):
         mpo = hamil.build_mpo(generate_terms,
                               const=fqe_ham.e_0(),
                               cutoff=cutoff,
-                              max_bond_dim=max_bond_dim).to_sparse()
+                              max_bond_dim=max_bond_dim)
         return cls(tensors=mpo.tensors, const=mpo.const,
                    opts=mpo.opts, dq=mpo.dq).to_sparse()
 
@@ -119,7 +119,7 @@ class MPOHamiltonian(MPS):
         mpo = hamil.build_mpo(generate_terms,
                               const=fqe_ham.e_0(),
                               cutoff=cutoff,
-                              max_bond_dim=max_bond_dim).to_sparse()
+                              max_bond_dim=max_bond_dim)
         return cls(tensors=mpo.tensors, const=mpo.const,
                    opts=mpo.opts, dq=mpo.dq).to_sparse()
 
@@ -146,7 +146,7 @@ class MPOHamiltonian(MPS):
         mpo = hamil.build_mpo(generate_terms,
                               const=fqe_ham.e_0(),
                               cutoff=cutoff,
-                              max_bond_dim=max_bond_dim).to_sparse()
+                              max_bond_dim=max_bond_dim)
         return cls(tensors=mpo.tensors, const=mpo.const,
                    opts=mpo.opts, dq=mpo.dq).to_sparse()
 
