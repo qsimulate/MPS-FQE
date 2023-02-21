@@ -7,7 +7,7 @@ import itertools
 from openfermion.chem import make_atomic_ring
 
 from mps_fqe.wavefunction import MPSWavefunction
-from mps_fqe.hamiltonian import MPOHamiltonian
+from mps_fqe.hamiltonian import mpo_from_fqe_hamiltonian
 
 
 def get_H_ring_data(amount_H):
@@ -65,7 +65,7 @@ def test_H_ring_evolve(amount_H, method):
     assert np.isclose(molecule.hf_energy,
                       evolved.expectationValue(hamiltonian))
 
-    MPO = MPOHamiltonian.from_fqe_hamiltonian(fqe_ham=hamiltonian)
+    MPO = mpo_from_fqe_hamiltonian(fqe_ham=hamiltonian)
     mps = MPSWavefunction.from_fqe_wavefunction(fqe_wf).time_evolve(
         mini_dt * mini_steps, MPO, bdim=bdim, steps=mini_steps, method="rk4"
     )
