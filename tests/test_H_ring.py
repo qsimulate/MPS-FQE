@@ -4,16 +4,17 @@ import fqe
 import numpy
 import pytest
 import itertools
-from pyblock3.hamiltonian import Hamiltonian
-from pyblock3.fcidump import FCIDUMP
 from openfermion.chem import make_atomic_ring
 
 from mps_fqe.wavefunction import MPSWavefunction
+from mps_fqe.hamiltonian import mpo_from_fqe_hamiltonian
 
 
 def get_H_ring_data(amount_H):
-    filename = os.path.join(os.path.dirname(os.path.realpath(__file__)), f"Hring_{amount_H}.hdf5")
-    molecule = make_atomic_ring(amount_H, 1.0, "sto-3g", atom_type="H", charge=0, filename=filename)
+    filename = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                            f"Hring_{amount_H}.hdf5")
+    molecule = make_atomic_ring(amount_H, 1.0, "sto-3g",
+                                atom_type="H", charge=0, filename=filename)
 
     if os.path.isfile(filename):
         molecule.load()
@@ -31,7 +32,8 @@ def generate_H_ring_data(molecule):
     return molecule
 
 
-@pytest.mark.parametrize("amount_H,method", itertools.product(range(2, 9), ["rk4", "tddmrg"]))
+@pytest.mark.parametrize("amount_H,method",
+                         itertools.product(range(2, 9), ["rk4", "tddmrg"]))
 def test_H_ring_evolve(amount_H, method):
     molecule = get_H_ring_data(amount_H)
 
@@ -44,7 +46,11 @@ def test_H_ring_evolve(amount_H, method):
     fqe_wf.set_wfn(strategy="hartree-fock")
     fqe_wf.normalize()
 
-    hamiltonian = fqe.get_restricted_hamiltonian((h1, numpy.einsum("ijlk", -0.5 * h2)), e_0=molecule.nuclear_repulsion)
+    e_0 = molecule.nuclear_repulsion
+    hamiltonian = fqe.get_restricted_hamiltonian((h1,
+                                                  numpy.einsum("ijlk",
+                                                               -0.5 * h2)),
+                                                 e_0=e_0)
     assert np.isclose(molecule.hf_energy, fqe_wf.expectationValue(hamiltonian))
 
     dt = 0.1
@@ -56,21 +62,10 @@ def test_H_ring_evolve(amount_H, method):
     evolved = fqe_wf.time_evolve(mini_steps * mini_dt, hamiltonian)
     for i in range(steps):
         evolved = evolved.time_evolve(dt, hamiltonian)
-    assert np.isclose(molecule.hf_energy, evolved.expectationValue(hamiltonian))
+    assert np.isclose(molecule.hf_energy,
+                      evolved.expectationValue(hamiltonian))
 
-    MPO = Hamiltonian(
-        FCIDUMP(
-            pg="c1",
-            n_sites=norbs,
-            n_elec=nele,
-            twos=sz,
-            h1e=h1,
-            g2e=numpy.einsum("iklj", h2),
-            const_e=molecule.nuclear_repulsion,
-        ),
-        flat=True,
-    ).build_qc_mpo()
-
+    MPO = mpo_from_fqe_hamiltonian(fqe_ham=hamiltonian)
     mps = MPSWavefunction.from_fqe_wavefunction(fqe_wf).time_evolve(
         mini_dt * mini_steps, MPO, bdim=bdim, steps=mini_steps, method="rk4"
     )
@@ -79,7 +74,8 @@ def test_H_ring_evolve(amount_H, method):
     mps_evolved = MPSWavefunction.from_fqe_wavefunction(evolved)
     assert np.isclose(molecule.hf_energy, mps_evolved.expectationValue(MPO))
 
-    mps_evolved_2 = mps.time_evolve(dt * steps, MPO, bdim=bdim, steps=steps, method=method)
+    mps_evolved_2 = mps.time_evolve(dt * steps, MPO, bdim=bdim,
+                                    steps=steps, method=method)
     mps_evolved_2 /= mps_evolved_2.norm()
     mps_evolved_2 = MPSWavefunction(tensors=mps_evolved_2.tensors)
 
@@ -89,10 +85,13 @@ def test_H_ring_evolve(amount_H, method):
 
     mps_evolved_to_fqe = mps_evolved.to_fqe_wavefunction()
     for sector in evolved.sectors():
-        assert np.allclose(evolved.get_coeff(sector), mps_evolved_to_fqe.get_coeff(sector))
+        assert np.allclose(evolved.get_coeff(sector),
+                           mps_evolved_to_fqe.get_coeff(sector))
 
     mps_evolved_2_to_fqe = mps_evolved_2.to_fqe_wavefunction()
     for sector in evolved.sectors():
         assert np.allclose(
-            evolved.get_coeff(sector), global_phase_shift * mps_evolved_2_to_fqe.get_coeff(sector), atol=1e-06
+            evolved.get_coeff(sector),
+            global_phase_shift * mps_evolved_2_to_fqe.get_coeff(sector),
+            atol=1e-06
         )
