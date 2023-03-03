@@ -77,6 +77,7 @@ def get_sparse_mpo(fqe_ham: FqeHamiltonian,
                           const=fqe_ham.e_0(),
                           cutoff=cutoff,
                           max_bond_dim=max_bond_dim)
+
     return mpo.to_sparse()
 
 
@@ -107,6 +108,7 @@ def get_restricted_mpo(fqe_ham: FqeHamiltonian,
                           const=fqe_ham.e_0(),
                           cutoff=cutoff,
                           max_bond_dim=max_bond_dim)
+
     return mpo.to_sparse()
 
 
@@ -132,6 +134,7 @@ def get_diagonal_coulomb_mpo(fqe_ham: FqeHamiltonian,
                           const=fqe_ham.e_0(),
                           cutoff=cutoff,
                           max_bond_dim=max_bond_dim)
+
     return mpo.to_sparse()
 
 
@@ -153,6 +156,7 @@ def get_diagonal_mpo(fqe_ham: FqeHamiltonian,
                           const=fqe_ham.e_0(),
                           cutoff=cutoff,
                           max_bond_dim=max_bond_dim)
+
     return mpo.to_sparse()
 
 

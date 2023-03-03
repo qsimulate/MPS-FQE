@@ -3,6 +3,7 @@ import numpy as np
 from typing import List, Union, Optional, Tuple
 
 import fqe
+from fqe.hamiltonians.hamiltonian import Hamiltonian as FqeHamiltonian
 from pyblock3.algebra.flat import FlatSparseTensor
 from pyblock3.algebra.mps import MPS
 from pyblock3.algebra.mpe import MPE
@@ -10,6 +11,7 @@ from pyblock3.algebra.integrate import rk4_apply
 from pyblock3.algebra.symmetry import SZ
 
 from mps_fqe import utils
+from mps_fqe.hamiltonian import mpo_from_fqe_hamiltonian
 
 
 def decompose_mps(fci_tensor: FlatSparseTensor) -> List[FlatSparseTensor]:
@@ -28,7 +30,9 @@ def decompose_mps(fci_tensor: FlatSparseTensor) -> List[FlatSparseTensor]:
 class MPSWavefunction(MPS):
     @classmethod
     def from_fqe_wavefunction(cls,
-                              fqe_wfn: fqe.Wavefunction) -> "MPSWavefunction":
+                              fqe_wfn: fqe.Wavefunction,
+                              **opts) \
+            -> "MPSWavefunction":
         sectors = fqe_wfn.sectors()
 
         def get_fci_FlatSparseTensor(sectors):
@@ -85,7 +89,7 @@ class MPSWavefunction(MPS):
 
         fci_tensor = get_fci_FlatSparseTensor(sectors)
 
-        return cls(tensors=decompose_mps(fci_tensor))
+        return cls(tensors=decompose_mps(fci_tensor), opts=opts)
 
     def to_fqe_wavefunction(self,
                             broken: Optional[Union[List[str], str]] = None)\
@@ -120,8 +124,8 @@ class MPSWavefunction(MPS):
         return fqe_wfn
 
     @classmethod
-    def from_pyblock3_mps(cls, mps: MPS) -> "MPSWavefunction":
-        return cls(tensors=mps.tensors)
+    def from_pyblock3_mps(cls, mps: MPS, **opts) -> "MPSWavefunction":
+        return cls(tensors=mps.tensors, opts=opts)
 
     def print_wfn(self) -> None:
         for ii, tensor in enumerate(self.tensors):
@@ -137,44 +141,56 @@ class MPSWavefunction(MPS):
     def compress(self, **opts) -> Tuple["MPSWavefunction", float]:
         mps, merror = super().compress(**opts)
 
-        return self.from_pyblock3_mps(mps), merror
+        return self.from_pyblock3_mps(mps, opts=opts), merror
 
-    def apply(self):
-        pass
+    def apply(self,
+              hamiltonian: Union[FqeHamiltonian, MPS]) -> "MPSWavefunction":
+        if isinstance(hamiltonian, FqeHamiltonian):
+            hamiltonian = mpo_from_fqe_hamiltonian(hamiltonian,
+                                                   n_sites=self.n_sites)
+        if hamiltonian.n_sites != self.n_sites:
+            raise ValueError('Hamiltonian has incorrect size:'
+                             + ' expected {}'.format(self.n_sites)
+                             + ' provided {}'.format(hamiltonian.n_sites))
+        mps = self.copy()
+        mps = hamiltonian @ mps
+
+        return type(self)(tensors=mps.tensors, opts=mps.opts)
 
     def transform(self):
         pass
 
-    def tddmrg(self, time: float, hamiltonian: MPS, bdim: int = 100,
+    def tddmrg(self, time: float, hamiltonian: MPS,
                steps: Optional[int] = None, n_sub_sweeps: int = 2):
         steps = 1 if steps is None else steps
         dt = time / steps
         mps = self.copy()
         mpe = MPE(mps, hamiltonian, mps)
+        bdim = mps.opts.get("max_bond_dim") \
+            if "max_bond_dim" in mps.opts else -1
         mpe.tddmrg(bdims=[bdim], dt=-dt * 1j, iprint=0, n_sweeps=steps,
                    normalize=False, n_sub_sweeps=n_sub_sweeps)
 
-        return type(self)(tensors=mps.tensors)
+        return type(self)(tensors=mps.tensors, opts=mps.opts)
 
-    def rk4_apply(self, time: float, hamiltonian: MPS, bdim: int = 100,
+    def rk4_apply(self, time: float, hamiltonian: MPS,
                   steps: Optional[int] = None) -> "MPSWavefunction":
         steps = 1 if steps is None else steps
         dt = time / steps
         mps = self.copy()
-        mps.opts = dict(max_bond_dim=bdim)
 
         for ii in range(steps):
             mps = rk4_apply((-dt * 1j) * hamiltonian, mps)
 
-        return type(self)(tensors=mps.tensors)
+        return type(self)(tensors=mps.tensors, opts=mps.opts)
 
     def time_evolve(self, time: float, hamiltonian: MPS,
-                    bdim: int = 100, steps: Optional[int] = None,
+                    steps: Optional[int] = None,
                     method: str = "tddmrg") -> "MPSWavefunction":
         if method.lower() == "tddmrg":
-            return self.tddmrg(time, hamiltonian, bdim, steps)
+            return self.tddmrg(time, hamiltonian, steps)
         elif method.lower() == "rk4":
-            return self.rk4_apply(time, hamiltonian, bdim, steps)
+            return self.rk4_apply(time, hamiltonian, steps)
         else:
             raise ValueError(f"method needs to be 'tddmrg' or\
 'rk4', '{method}' given")
