@@ -31,8 +31,13 @@ class MPSWavefunction(MPS):
     @classmethod
     def from_fqe_wavefunction(cls,
                               fqe_wfn: fqe.Wavefunction,
-                              **opts) \
+                              max_bond_dim: int = -1,
+                              cutoff: float = 1E-12) \
             -> "MPSWavefunction":
+        opts = {
+            'max_bond_dim': max_bond_dim,
+            'cutoff': cutoff
+        }
         sectors = fqe_wfn.sectors()
 
         def get_fci_FlatSparseTensor(sectors):
@@ -124,7 +129,15 @@ class MPSWavefunction(MPS):
         return fqe_wfn
 
     @classmethod
-    def from_pyblock3_mps(cls, mps: MPS, **opts) -> "MPSWavefunction":
+    def from_pyblock3_mps(cls,
+                          mps: MPS,
+                          max_bond_dim: int = -1,
+                          cutoff: float = 1E-12) -> "MPSWavefunction":
+        opts = {
+            'max_bond_dim': max_bond_dim,
+            'cutoff': cutoff
+        }
+
         return cls(tensors=mps.tensors, opts=opts)
 
     def print_wfn(self) -> None:
@@ -140,8 +153,10 @@ class MPSWavefunction(MPS):
 
     def compress(self, **opts) -> Tuple["MPSWavefunction", float]:
         mps, merror = super().compress(**opts)
+        mbd = opts.get('max_bond_dim') if 'max_bond_dim' in opts else -1
+        mbd = opts.get('cutoff') if 'cutoff' in opts else 1E-12
 
-        return self.from_pyblock3_mps(mps, opts=opts), merror
+        return self.from_pyblock3_mps(mps, mbd, cut), merror
 
     def apply(self,
               hamiltonian: Union[FqeHamiltonian, MPS]) -> "MPSWavefunction":

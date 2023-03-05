@@ -1,9 +1,6 @@
-import numpy
 from numpy import einsum
 
-import pytest
 import fqe
-from openfermion import FermionOperator
 from mps_fqe.wavefunction import MPSWavefunction
 from mps_fqe.hamiltonian import mpo_from_fqe_hamiltonian
 from test_H_ring import get_H_ring_data
@@ -32,4 +29,3 @@ def test_propagation():
     assert mps.bond_dim == 64
     mps_evolved = mps.time_evolve(10, mpo, 10, "tddmrg")
     assert mps_evolved.bond_dim == mbd
-
