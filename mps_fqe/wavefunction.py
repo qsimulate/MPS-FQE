@@ -153,10 +153,10 @@ class MPSWavefunction(MPS):
 
     def compress(self, **opts) -> Tuple["MPSWavefunction", float]:
         mps, merror = super().compress(**opts)
-        mbd = opts.get('max_bond_dim') if 'max_bond_dim' in opts else -1
-        mbd = opts.get('cutoff') if 'cutoff' in opts else 1E-12
+        max_bond_dim = opts.get('max_bond_dim') if 'max_bond_dim' in opts else -1
+        cutoff = opts.get('cutoff') if 'cutoff' in opts else 1E-12
 
-        return self.from_pyblock3_mps(mps, mbd, cut), merror
+        return self.from_pyblock3_mps(mps, max_bond_dim, cutoff), merror
 
     def apply(self,
               hamiltonian: Union[FqeHamiltonian, MPS]) -> "MPSWavefunction":
@@ -176,16 +176,16 @@ class MPSWavefunction(MPS):
         pass
 
     def tddmrg(self, time: float, hamiltonian: MPS,
-               steps: Optional[int] = None, n_sub_sweeps: int = 2):
+               steps: Optional[int] = None, n_sub_sweeps: int = 1):
         steps = 1 if steps is None else steps
         dt = time / steps
         mps = self.copy()
         mpe = MPE(mps, hamiltonian, mps)
         bdim = mps.opts.get("max_bond_dim") \
             if "max_bond_dim" in mps.opts else -1
+
         mpe.tddmrg(bdims=[bdim], dt=-dt * 1j, iprint=0, n_sweeps=steps,
                    normalize=False, n_sub_sweeps=n_sub_sweeps)
-
         return type(self)(tensors=mps.tensors, opts=mps.opts)
 
     def rk4_apply(self, time: float, hamiltonian: MPS,
