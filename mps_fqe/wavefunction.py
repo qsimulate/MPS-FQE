@@ -176,8 +176,7 @@ class MPSWavefunction(MPS):
         pass
 
     def tddmrg(self, time: float, hamiltonian: MPS,
-               steps: Optional[int] = None, n_sub_sweeps: int = 1):
-        steps = 1 if steps is None else steps
+               steps: int = 1, n_sub_sweeps: int = 1):
         dt = time / steps
         mps = self.copy()
         mpe = MPE(mps, hamiltonian, mps)
@@ -189,8 +188,7 @@ class MPSWavefunction(MPS):
         return type(self)(tensors=mps.tensors, opts=mps.opts)
 
     def rk4_apply(self, time: float, hamiltonian: MPS,
-                  steps: Optional[int] = None) -> "MPSWavefunction":
-        steps = 1 if steps is None else steps
+                  steps: int = 1) -> "MPSWavefunction":
         dt = time / steps
         mps = self.copy()
 
