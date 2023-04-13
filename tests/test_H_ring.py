@@ -66,15 +66,17 @@ def test_H_ring_evolve(amount_H, method):
                       evolved.expectationValue(hamiltonian))
 
     MPO = mpo_from_fqe_hamiltonian(fqe_ham=hamiltonian)
-    mps = MPSWavefunction.from_fqe_wavefunction(fqe_wf).time_evolve(
-        mini_dt * mini_steps, MPO, bdim=bdim, steps=mini_steps, method="rk4"
-    )
+    mps = MPSWavefunction.from_fqe_wavefunction(fqe_wf, max_bond_dim=bdim)\
+                         .time_evolve(mini_dt * mini_steps,
+                                      MPO,
+                                      steps=mini_steps,
+                                      method="rk4")
     assert np.isclose(molecule.hf_energy, mps.expectationValue(MPO))
 
     mps_evolved = MPSWavefunction.from_fqe_wavefunction(evolved)
     assert np.isclose(molecule.hf_energy, mps_evolved.expectationValue(MPO))
 
-    mps_evolved_2 = mps.time_evolve(dt * steps, MPO, bdim=bdim,
+    mps_evolved_2 = mps.time_evolve(dt * steps, MPO,
                                     steps=steps, method=method)
     mps_evolved_2 /= mps_evolved_2.norm()
     mps_evolved_2 = MPSWavefunction(tensors=mps_evolved_2.tensors)
