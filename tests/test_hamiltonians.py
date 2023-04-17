@@ -34,13 +34,22 @@ def test_restricted(amount_H):
 
 
 @pytest.mark.parametrize("n_electrons", [3, 5])
-def test_diagonal_coulomb(n_electrons, sz=1, n_orbitals=4):
+@pytest.mark.parametrize("full", [True, False])
+def test_diagonal_coulomb(n_electrons, full, sz=1, n_orbitals=4):
     fqe_wfn = fqe.Wavefunction([[n_electrons, sz, n_orbitals]])
-    vij = numpy.zeros((n_orbitals, n_orbitals, n_orbitals, n_orbitals),
-                      dtype=numpy.complex128)
-    for i in range(n_orbitals):
-        for j in range(n_orbitals):
-            vij[i, j] += 4*(i % n_orbitals + 1)*(j % n_orbitals + 1)*0.21
+    if full:
+        vij = numpy.zeros((n_orbitals, n_orbitals, n_orbitals, n_orbitals),
+                          dtype=numpy.complex128)
+        for i in range(n_orbitals):
+            for j in range(n_orbitals):
+                vij[i, j] += 4*(i % n_orbitals + 1)*(j % n_orbitals + 1)*0.21
+
+    else:
+        vij = numpy.zeros((n_orbitals, n_orbitals), dtype=numpy.complex128)
+        for i in range(n_orbitals):
+            for j in range(n_orbitals):
+                vij[i, j] += 4*(i % n_orbitals + 1)*(j % n_orbitals + 1)*0.21
+
 
     fqe_wfn.set_wfn(strategy='random')
     hamiltonian = fqe.get_diagonalcoulomb_hamiltonian(vij,

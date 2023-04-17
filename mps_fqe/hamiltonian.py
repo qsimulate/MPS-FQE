@@ -122,6 +122,11 @@ def get_diagonal_coulomb_mpo(fqe_ham: FqeHamiltonian,
 
     def generate_terms(n_sites, c, d):
         v = fqe_ham._tensor[2]
+        diag = fqe_ham._tensor[1]
+        for isite in range(n_sites):
+            for ispin in [0, 1]:
+                yield (diag[isite] + v[isite, isite])\
+                    * c[isite, ispin] * d[isite, ispin]
         for isite in range(n_sites):
             for jsite in range(n_sites):
                 for ispin in [0, 1]:
