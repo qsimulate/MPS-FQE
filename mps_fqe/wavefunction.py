@@ -176,14 +176,15 @@ class MPSWavefunction(MPS):
         pass
 
     def tddmrg(self, time: float, hamiltonian: MPS,
-               steps: int = 1, n_sub_sweeps: int = 1):
+               steps: int = 1, n_sub_sweeps: int = 1,
+               mpi: bool = False):
         dt = time / steps
         mps = self.copy()
         mpe = MPE(mps, hamiltonian, mps)
         bdim = mps.opts.get("max_bond_dim", -1)
 
         mpe.tddmrg(bdims=[bdim], dt=-dt * 1j, iprint=0, n_sweeps=steps,
-                   normalize=False, n_sub_sweeps=n_sub_sweeps)
+                   normalize=False, n_sub_sweeps=n_sub_sweeps, mpi=mpi)
 
         return type(self)(tensors=mps.tensors, opts=mps.opts)
 
@@ -199,9 +200,10 @@ class MPSWavefunction(MPS):
 
     def time_evolve(self, time: float, hamiltonian: MPS,
                     steps: Optional[int] = None,
-                    method: str = "tddmrg") -> "MPSWavefunction":
+                    method: str = "tddmrg",
+                    mpi: bool = False) -> "MPSWavefunction":
         if method.lower() == "tddmrg":
-            return self.tddmrg(time, hamiltonian, steps)
+            return self.tddmrg(time, hamiltonian, steps, mpi)
         elif method.lower() == "rk4":
             return self.rk4_apply(time, hamiltonian, steps)
         else:
