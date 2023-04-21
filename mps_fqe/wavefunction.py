@@ -177,11 +177,8 @@ class MPSWavefunction(MPS):
 
     def tddmrg(self, time: float, hamiltonian: MPS,
                steps: int = 1, n_sub_sweeps: int = 1,
-<<<<<<< Updated upstream
-               mpi: bool = False):
-=======
+               mpi: bool = False,
                cached: bool = False):
->>>>>>> Stashed changes
         dt = time / steps
         mps = self.copy()
         mpe = CachedMPE(mps, hamiltonian, mps) if cached\
@@ -204,19 +201,11 @@ class MPSWavefunction(MPS):
         return type(self)(tensors=mps.tensors, opts=mps.opts)
 
     def time_evolve(self, time: float, hamiltonian: MPS,
-<<<<<<< Updated upstream
-                    steps: Optional[int] = None,
-                    method: str = "tddmrg",
-                    mpi: bool = False) -> "MPSWavefunction":
-        if method.lower() == "tddmrg":
-            return self.tddmrg(time, hamiltonian, steps, mpi)
-=======
                     steps: int = 1,
                     method: str = "tddmrg",
                     cached: bool = False) -> "MPSWavefunction":
         if method.lower() == "tddmrg":
             return self.tddmrg(time, hamiltonian, steps, cached)
->>>>>>> Stashed changes
         elif method.lower() == "rk4":
             return self.rk4_apply(time, hamiltonian, steps)
         else:
