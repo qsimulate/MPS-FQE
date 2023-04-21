@@ -1,0 +1,44 @@
+[project]
+name = "mps_fqe"
+description = "MPS backend for Openfermion-FQE"
+version = "0.0.0"
+authors = [ { name = "QSimulate" } ]
+
+dependencies = [
+    "fqe",
+    "block2",
+    "pyblock3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "openfermion",
+    "openfermionpyscf",
+    "mypy",
+    "pytest",
+    "black",
+    "flakeheaven",
+    "pylsp",
+    "pylsp-mypy",
+]
+
+[tool.flakeheaven]
+max_line_length = 79
+
+[tool.black]
+line-length = 79
+target-version = ['py38']
+
+[tool.pytest.ini_options]
+
+filterwarnings = ["ignore:Please Use `OptimizeResult`.*:DeprecationWarning"]
+
+[[tool.mypy.overrides]]
+module = [
+    "fqe.*",
+    "pyblock3.*",
+    "openfermion.*",
+    "openfermionpyscf",
+]
+
+ignore_missing_imports = true
