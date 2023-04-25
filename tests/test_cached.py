@@ -1,8 +1,12 @@
-from numpy import einsum
+import os
+import tempfile
 
 import fqe
+import numpy
+from numpy import einsum
 from mps_fqe.wavefunction import MPSWavefunction
 from mps_fqe.hamiltonian import mpo_from_fqe_hamiltonian
+
 from .test_H_ring import get_H_ring_data
 
 
@@ -25,7 +29,14 @@ def test_propagation():
 
     mpo = mpo_from_fqe_hamiltonian(fqe_ham=hamiltonian)
     mps = MPSWavefunction.from_fqe_wavefunction(fqe_wfn, max_bond_dim=mbd)
-    # before_propagation
-    assert mps.bond_dim == 64
-    mps_evolved = mps.time_evolve(10, mpo, 10, "tddmrg")
-    assert mps_evolved.bond_dim == mbd
+    mps_evolved = mps.time_evolve(1, mpo, 10, "tddmrg", cached=False)
+    ref = mps_evolved.expectationValue(mpo)
+    mps_cached = MPSWavefunction.from_fqe_wavefunction(fqe_wfn,
+                                                       max_bond_dim=mbd)
+    with tempfile.TemporaryDirectory() as temp_dir:
+        os.environ['TMPDIR'] = str(temp_dir)
+        mps_cached_evolved = mps_cached.time_evolve(1, mpo, 10,
+                                                    "tddmrg", cached=True)
+        out = mps_cached_evolved.expectationValue(mpo)
+
+    assert numpy.isclose(ref, out)

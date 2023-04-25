@@ -6,7 +6,7 @@ import fqe
 from fqe.hamiltonians.hamiltonian import Hamiltonian as FqeHamiltonian
 from pyblock3.algebra.flat import FlatSparseTensor
 from pyblock3.algebra.mps import MPS
-from pyblock3.algebra.mpe import MPE
+from pyblock3.algebra.mpe import MPE, CachedMPE
 from pyblock3.algebra.integrate import rk4_apply
 from pyblock3.algebra.symmetry import SZ
 
@@ -176,10 +176,12 @@ class MPSWavefunction(MPS):
         pass
 
     def tddmrg(self, time: float, hamiltonian: MPS,
-               steps: int = 1, n_sub_sweeps: int = 1):
+               steps: int = 1, n_sub_sweeps: int = 1,
+               cached: bool = False):
         dt = time / steps
         mps = self.copy()
-        mpe = MPE(mps, hamiltonian, mps)
+        mpe = CachedMPE(mps, hamiltonian, mps) if cached \
+            else MPE(mps, hamiltonian, mps)
         bdim = mps.opts.get("max_bond_dim", -1)
 
         mpe.tddmrg(bdims=[bdim], dt=-dt * 1j, iprint=0, n_sweeps=steps,
@@ -198,10 +200,11 @@ class MPSWavefunction(MPS):
         return type(self)(tensors=mps.tensors, opts=mps.opts)
 
     def time_evolve(self, time: float, hamiltonian: MPS,
-                    steps: Optional[int] = None,
-                    method: str = "tddmrg") -> "MPSWavefunction":
+                    steps: int = 1,
+                    method: str = "tddmrg",
+                    cached: bool = False) -> "MPSWavefunction":
         if method.lower() == "tddmrg":
-            return self.tddmrg(time, hamiltonian, steps)
+            return self.tddmrg(time, hamiltonian, steps, cached=cached)
         elif method.lower() == "rk4":
             return self.rk4_apply(time, hamiltonian, steps)
         else:
