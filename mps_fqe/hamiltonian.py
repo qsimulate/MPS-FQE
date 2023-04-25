@@ -1,12 +1,9 @@
 import numpy
-import itertools
 from typing import Optional
 
 from fqe.hamiltonians.hamiltonian import Hamiltonian as FqeHamiltonian
 from fqe.hamiltonians import diagonal_coulomb, diagonal_hamiltonian, \
-    general_hamiltonian, gso_hamiltonian, \
-    hamiltonian, restricted_hamiltonian, \
-    sparse_hamiltonian, sso_hamiltonian
+    restricted_hamiltonian, sparse_hamiltonian
 
 from pyblock3.hamiltonian import Hamiltonian
 from pyblock3.fcidump import FCIDUMP
@@ -93,8 +90,8 @@ def get_restricted_mpo(fqe_ham: FqeHamiltonian,
     mpo, _ = hamil.build_qc_mpo().compress(cutoff=cutoff,
                                            max_bond_dim=max_bond_dim)
     opts = {'cutoff': cutoff,
-            'max_bond_dim': max_bond_dim} 
-    
+            'max_bond_dim': max_bond_dim}
+
     return MPS(tensors=mpo.tensors, opts=opts, const=fd.const_e).to_sparse()
 
 

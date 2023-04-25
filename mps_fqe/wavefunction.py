@@ -217,4 +217,3 @@ class MPSWavefunction(MPS):
     def get_FCITensor(self) -> FlatSparseTensor:
         return functools.reduce(lambda x, y: np.tensordot(x, y, axes=1),
                                 self.tensors)
-
