@@ -87,29 +87,15 @@ def get_restricted_mpo(fqe_ham: FqeHamiltonian,
                        cutoff: float = 1E-12,
                        max_bond_dim: int = -1) -> "MPS":
     # Generate the restricted hamiltonian MPO
+    fd.h1e = fqe_ham.tensors()[0]
+    fd.g2e = numpy.einsum("ikjl", -2 * fqe_ham.tensors()[1])
     hamil = Hamiltonian(fd, flat=flat)
-
-    def generate_terms(n_sites, c, d):
-        t = fqe_ham.tensors()[0]
-        v = numpy.einsum("ikjl", -2 * fqe_ham.tensors()[1])
-        for isite in range(n_sites):
-            for jsite in range(n_sites):
-                for ispin in [0, 1]:
-                    yield t[isite, jsite] * c[isite, ispin] * d[jsite, ispin]
-        for isite, jsite, ksite, lsite in itertools.product(range(n_sites),
-                                                            repeat=4):
-            for ijspin in [0, 1]:
-                for klspin in [0, 1]:
-                    yield 0.5 * v[isite, jsite, ksite, lsite] \
-                        * (c[isite, ijspin] * c[ksite, klspin]
-                           * d[lsite, klspin] * d[jsite, ijspin])
-
-    mpo = hamil.build_mpo(generate_terms,
-                          const=fqe_ham.e_0(),
-                          cutoff=cutoff,
-                          max_bond_dim=max_bond_dim)
-
-    return mpo.to_sparse()
+    mpo, _ = hamil.build_qc_mpo().compress(cutoff=cutoff,
+                                           max_bond_dim=max_bond_dim)
+    opts = {'cutoff': cutoff,
+            'max_bond_dim': max_bond_dim} 
+    
+    return MPS(tensors=mpo.tensors, opts=opts, const=fd.const_e).to_sparse()
 
 
 def get_diagonal_coulomb_mpo(fqe_ham: FqeHamiltonian,
