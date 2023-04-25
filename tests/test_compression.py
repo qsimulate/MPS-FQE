@@ -3,7 +3,7 @@ from numpy import einsum
 import fqe
 from mps_fqe.wavefunction import MPSWavefunction
 from mps_fqe.hamiltonian import mpo_from_fqe_hamiltonian
-from test_H_ring import get_H_ring_data
+from .test_H_ring import get_H_ring_data
 
 
 def test_propagation():

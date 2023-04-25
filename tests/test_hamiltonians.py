@@ -6,7 +6,7 @@ import fqe
 from openfermion import FermionOperator
 from mps_fqe.wavefunction import MPSWavefunction
 from mps_fqe.hamiltonian import mpo_from_fqe_hamiltonian
-from test_H_ring import get_H_ring_data
+from .test_H_ring import get_H_ring_data
 
 
 @pytest.mark.parametrize("amount_H", range(2, 5))
@@ -49,7 +49,6 @@ def test_diagonal_coulomb(n_electrons, full, sz=1, n_orbitals=4):
         for i in range(n_orbitals):
             for j in range(n_orbitals):
                 vij[i, j] += 4*(i % n_orbitals + 1)*(j % n_orbitals + 1)*0.21
-
 
     fqe_wfn.set_wfn(strategy='random')
     hamiltonian = fqe.get_diagonalcoulomb_hamiltonian(vij,
