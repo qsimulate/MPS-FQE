@@ -31,20 +31,15 @@ def test_rdm1(n_electrons, sz, n_orbitals):
     #                      atol=1e-12)
 
 
-@pytest.mark.parametrize("n_electrons,sz,n_orbitals", [(2, 0, 4),
+@pytest.mark.parametrize("n_electrons,sz,n_orbitals", [(2, 0, 2),
                                                        (6, 0, 4)])
 def test_rdm2(n_electrons, sz, n_orbitals):
     fqe_wfn = fqe.Wavefunction([[n_electrons, sz, n_orbitals]])
     fqe_wfn.set_wfn(strategy='random')
     mps = MPSWavefunction.from_fqe_wavefunction(fqe_wfn=fqe_wfn)
-    # Spatial orbitals
-    #    print(mps.rdm('i^ j^ k l'))
-    # print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-    # print(fqe_wfn.rdm('i^ j^ k l') - mps.rdm('i^ j^ k l'))
-    # print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-    # assert numpy.allclose(mps.rdm('i^ j^ k l'),
-    #                       fqe_wfn.rdm('i^ j^ k l'),
-    #                       atol=1E-12)
-    assert numpy.isclose(mps.rdm("0^ 2^ 0 2"),
-                         fqe_wfn.rdm("0^ 2^ 0 2"),
-                         atol=1E-12)
+    assert numpy.allclose(mps.rdm('i^ j^ k l'),
+                          fqe_wfn.rdm('i^ j^ k l'),
+                          atol=1E-12)
+    # assert numpy.isclose(mps.rdm("0^ 2^ 0 2"),
+    #                      fqe_wfn.rdm("0^ 2^ 0 2"),
+    #                      atol=1E-12)

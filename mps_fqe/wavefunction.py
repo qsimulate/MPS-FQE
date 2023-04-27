@@ -1,5 +1,6 @@
 import functools
 import numpy
+import itertools
 from typing import List, Union, Optional, Tuple
 
 import fqe
@@ -250,13 +251,11 @@ class MPSWavefunction(MPS):
 
         rdm2 = numpy.zeros((self.n_sites, self.n_sites,
                             self.n_sites, self.n_sites), dtype=complex)
-        for isite in range(self.n_sites):
-            for jsite in range(self.n_sites):
-                for ksite in range(self.n_sites):
-                    for lsite in range(self.n_sites):
-                        rdm2[isite, jsite, ksite, lsite] = \
-                            self.expectationValue(
-                                utils.two_body_projection_mpo(isite, jsite,
-                                                              ksite, lsite,
-                                                              self.n_sites))
+
+        for isite, jsite, ksite, lsite in itertools.product(
+                range(self.n_sites), repeat=4):
+            mpo = utils.two_body_projection_mpo(isite, jsite,
+                                                ksite, lsite,
+                                                self.n_sites)
+            rdm2[isite, jsite, ksite, lsite] = self.expectationValue(mpo)
         return rdm2
