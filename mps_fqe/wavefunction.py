@@ -1,9 +1,11 @@
 import functools
-import numpy as np
+import numpy
 from typing import List, Union, Optional, Tuple
 
 import fqe
 from fqe.hamiltonians.hamiltonian import Hamiltonian as FqeHamiltonian
+from fqe.hamiltonians.sparse_hamiltonian import SparseHamiltonian
+from openfermion import FermionOperator
 from pyblock3.algebra.flat import FlatSparseTensor
 from pyblock3.algebra.mps import MPS
 from pyblock3.algebra.mpe import MPE, CachedMPE
@@ -21,7 +23,7 @@ def decompose_mps(fci_tensor: FlatSparseTensor) -> List[FlatSparseTensor]:
         u, s, v = fci_tensor.tensor_svd(2, pattern="+"
                                         * (fci_tensor.ndim - 1) + "-")
         tensors.append(u)
-        fci_tensor = np.tensordot(np.diag(s), v, axes=1)
+        fci_tensor = numpy.tensordot(numpy.diag(s), v, axes=1)
     tensors.append(fci_tensor)
 
     return tensors
@@ -53,7 +55,7 @@ class MPSWavefunction(MPS):
                                           SZ(1, -1, 0),
                                           SZ(2, 0, 0)]))
 
-            shapes = np.ones((n_blocks, ndim + 2), dtype=np.uint32)
+            shapes = numpy.ones((n_blocks, ndim + 2), dtype=numpy.uint32)
 
             q_labels = []
             data_array = []
@@ -65,30 +67,33 @@ class MPSWavefunction(MPS):
                 beta_str = fqe_wfn.sector(sector).get_fcigraph()\
                                                  .string_beta_all()\
                                                  .astype(int)
-                alpha_occ = np.array([tuple(reversed(bin(1 << ndim | x)[3:]))
-                                      for x in alpha_str], dtype=np.uint32)
-                beta_occ = np.array([tuple(reversed(bin(1 << ndim | x)[3:]))
-                                     for x in beta_str], dtype=np.uint32)
+                alpha_occ = numpy.array(
+                    [tuple(reversed(bin(1 << ndim | x)[3:]))
+                     for x in alpha_str], dtype=numpy.uint32)
+                beta_occ = numpy.array(
+                    [tuple(reversed(bin(1 << ndim | x)[3:]))
+                     for x in beta_str], dtype=numpy.uint32)
 
                 q_labels_temp = alpha_occ[:, None, :]\
                     + 2 * beta_occ[None, :, :]
-                q_label = np.array([physical_q_labels[i] for i in
-                                    q_labels_temp.flatten()]).reshape(-1, ndim)
+                q_label = numpy.array(
+                    [physical_q_labels[i] for i in
+                     q_labels_temp.flatten()]).reshape(-1, ndim)
 
                 fermionic_sign = utils.fqe_sign_change(fqe_wfn.sector(sector))
                 data_array.append((fermionic_sign
                                    * fqe_wfn.get_coeff(sector)).flatten())
 
-                vacuum = np.ones(len(q_label)) * SZ(0, 0, 0).to_flat()
-                target = np.ones(len(q_label)) * SZ(sector[0],
-                                                    sector[1],
-                                                    0).to_flat()
-                q_labels.append(np.hstack((vacuum[:, None],
-                                           q_label,
-                                           target[:, None])))
+                vacuum = numpy.ones(len(q_label)) * SZ(0, 0, 0).to_flat()
+                target = numpy.ones(len(q_label)) * SZ(sector[0],
+                                                       sector[1],
+                                                       0).to_flat()
+                q_labels.append(numpy.hstack((vacuum[:, None],
+                                              q_label,
+                                              target[:, None])))
 
-            q_labels_arr = np.vstack(q_labels)
-            data = np.concatenate(data_array)
+            q_labels_arr = numpy.vstack(q_labels)
+            data = numpy.concatenate(data_array)
 
             return FlatSparseTensor(q_labels_arr, shapes, data)
 
@@ -111,7 +116,7 @@ class MPSWavefunction(MPS):
         for qlabel, shape, data in zip(fci_tensor.q_labels,
                                        fci_tensor.shapes,
                                        fci_tensor.data):
-            assert np.prod(shape) == 1
+            assert numpy.prod(shape) == 1
             qlabel = tuple(SZ.from_flat(x) for x in qlabel)
             sector = fqe_wfn.sector((qlabel[-1].n, qlabel[-1].twos))
             astring = sum(2 ** n if x in (SZ(1, 1, 0), SZ(2, 0, 0))
@@ -215,5 +220,43 @@ class MPSWavefunction(MPS):
         return MPE(self, hamiltonian, self)[0:2].expectation
 
     def get_FCITensor(self) -> FlatSparseTensor:
-        return functools.reduce(lambda x, y: np.tensordot(x, y, axes=1),
+        return functools.reduce(lambda x, y: numpy.tensordot(x, y, axes=1),
                                 self.tensors)
+
+    def rdm(self, string: str, brawfn: Optional["MPSWavefunction"] = None
+            ) -> Union[complex, numpy.ndarray]:
+        rank = len(string.split()) // 2
+        if rank > 2:
+            raise ValueError("rdm is only implemented up to 2 bodies.")
+        if brawfn is not None:
+            raise ValueError("Transition rdm is not implemented yet.")
+
+        # Get an individual rdm element
+        if any(char.isdigit() for char in string):
+            mpo = mpo_from_fqe_hamiltonian(
+                SparseHamiltonian(FermionOperator(string)),
+                n_sites=self.n_sites)
+            return self.expectationValue(mpo)
+
+        # Get the entire rdm
+        if rank == 1:
+            rdm1 = numpy.zeros((self.n_sites, self.n_sites), dtype=complex)
+            for isite in range(self.n_sites):
+                for jsite in range(isite+1):
+                    rdm1[isite, jsite] = self.expectationValue(
+                        utils.one_body_projection_mpo(isite, jsite,
+                                                      self.n_sites))
+            return rdm1 + numpy.tril(rdm1, -1).transpose().conjugate()
+
+        rdm2 = numpy.zeros((self.n_sites, self.n_sites,
+                            self.n_sites, self.n_sites), dtype=complex)
+        for isite in range(self.n_sites):
+            for jsite in range(self.n_sites):
+                for ksite in range(self.n_sites):
+                    for lsite in range(self.n_sites):
+                        rdm2[isite, jsite, ksite, lsite] = \
+                            self.expectationValue(
+                                utils.two_body_projection_mpo(isite, jsite,
+                                                              ksite, lsite,
+                                                              self.n_sites))
+        return rdm2
