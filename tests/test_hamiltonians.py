@@ -84,6 +84,7 @@ def test_sparse_hamiltonian(n_electrons, sz, n_orbitals):
     fqe_wfn.set_wfn(strategy='random')
     coeffs = numpy.random.rand(4)
     operator = coeffs[0] * FermionOperator('0^ 0') \
+        + coeffs[0] * FermionOperator('1^ 3') \
         + coeffs[1] * FermionOperator('0^ 2 5^ 7') \
         + coeffs[2] * FermionOperator('6 0^') \
         + coeffs[3] * FermionOperator('3^ 3')

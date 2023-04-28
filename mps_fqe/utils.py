@@ -37,14 +37,18 @@ def one_body_projection_mpo(isite: int, jsite: int, n_sites: int,
     def gen_spin_terms(n_sites, c, d):
         yield c[isite // 2, isite % 2] * d[jsite // 2, jsite % 2]
 
+    hamil = Hamiltonian(fd, flat)
     if spinfree:
-        mpo = Hamiltonian(fd, flat).build_mpo(gen_spinfree_terms,
-                                              cutoff=1E-12,
-                                              max_bond_dim=-1)
+        mpo = hamil.build_mpo(gen_spinfree_terms,
+                              cutoff=1E-12,
+                              max_bond_dim=-1,
+                              const=0)
     else:
-        mpo = Hamiltonian(fd, flat).build_mpo(gen_spin_terms,
-                                              cutoff=1E-12,
-                                              max_bond_dim=-1)
+        mpo = hamil.build_mpo(gen_spin_terms,
+                              cutoff=1E-12,
+                              max_bond_dim=-1,
+                              const=0)
+
     return mpo.to_sparse()
 
 
@@ -63,12 +67,12 @@ def two_body_projection_mpo(isite: int, jsite: int, ksite: int, lsite: int,
                 yield c[isite, sigma] * c[jsite, tau] \
                     * d[ksite, sigma] * d[lsite, tau]
 
+    hamil = Hamiltonian(fd, flat)
     if spinfree:
-        mpo = Hamiltonian(fd, flat).build_mpo(gen_spinfree_terms,
-                                              cutoff=0,
-                                              max_bond_dim=-1)
+        mpo = hamil.build_mpo(gen_spinfree_terms, cutoff=1E-12,
+                              max_bond_dim=-1, const=0)
     else:
-        mpo = Hamiltonian(fd, flat).build_mpo(gen_spin_terms,
-                                              cutoff=0,
-                                              max_bond_dim=-1)
+        mpo = hamil.build_mpo(gen_spin_terms, cutoff=1E-12,
+                              max_bond_dim=-1, const=0)
+
     return mpo.to_sparse()

@@ -74,6 +74,8 @@ def get_sparse_mpo(fqe_ham: FqeHamiltonian,
                           const=fqe_ham.e_0(),
                           cutoff=cutoff,
                           max_bond_dim=max_bond_dim)
+    # Hack to make sure that there are operators in both spin subspaces
+    mpo += 0 * hamil.build_identity_mpo()
 
     return mpo.to_sparse()
 
