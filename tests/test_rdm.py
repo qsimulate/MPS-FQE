@@ -66,7 +66,8 @@ def test_block2_rdm1(n_electrons, sz, n_orbitals):
         b2mps = MPSTools.to_block2(mps, save_dir=driver.scratch)
         rdm1 = numpy.sum(driver.get_1pdm(b2mps), axis=0)
 
-    print(len(rdm1[:, 0]), len(rdm1[0, :]))
+    fqe_rdm1 = fqe_wfn.rdm("i^ j")
+    print(rdm1[0][0], fqe_rdm1[0][0])
     assert numpy.allclose(rdm1,
-                          fqe_wfn.rdm("i^ j"),
+                          fqe_rdm1,
                           atol=1E-12)
