@@ -63,9 +63,9 @@ def two_body_projection_mpo(isite: int, jsite: int, ksite: int, lsite: int,
 
     def gen_spinfree_terms(n_sites, c, d):
         for sigma in [0, 1]:
-            for tau in [0, 1]:
-                yield c[isite, sigma] * c[jsite, tau] \
-                    * d[ksite, sigma] * d[lsite, tau]
+            for rho in [0, 1]:
+                yield c[isite, sigma] * c[jsite, rho] \
+                    * d[ksite, sigma] * d[lsite, rho]
 
     hamil = Hamiltonian(fd, flat)
     if spinfree:
