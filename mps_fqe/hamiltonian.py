@@ -3,7 +3,7 @@ from typing import Optional
 
 from fqe.hamiltonians.hamiltonian import Hamiltonian as FqeHamiltonian
 from fqe.hamiltonians import diagonal_coulomb, diagonal_hamiltonian, \
-    restricted_hamiltonian, sparse_hamiltonian
+    restricted_hamiltonian, sparse_hamiltonian, general_hamiltonian
 
 from pyblock3.hamiltonian import Hamiltonian
 from pyblock3.fcidump import FCIDUMP
@@ -14,7 +14,8 @@ allowed_types = [
     sparse_hamiltonian.SparseHamiltonian,
     diagonal_coulomb.DiagonalCoulomb,
     diagonal_hamiltonian.Diagonal,
-    restricted_hamiltonian.RestrictedHamiltonian
+    restricted_hamiltonian.RestrictedHamiltonian,
+    general_hamiltonian.General
 ]
 
 
@@ -95,6 +96,23 @@ def get_restricted_mpo(fqe_ham: FqeHamiltonian,
     return MPS(tensors=mpo.tensors, opts=opts, const=fd.const_e).to_sparse()
 
 
+def get_complex_qc_mpo(fqe_ham: FqeHamiltonian,
+                       fd: FCIDUMP,
+                       flat: bool = True,
+                       cutoff: float = 1E-12,
+                       max_bond_dim: int = -1) -> "MPS":
+    # Generate the restricted hamiltonian MPO
+    fd.h1e = fqe_ham.tensors()[0]
+    fd.g2e = numpy.einsum("ikjl", -2 * fqe_ham.tensors()[1])
+    hamil = Hamiltonian(fd, flat=flat)
+    mpo, _ = hamil.build_complex_qc_mpo().compress(cutoff=cutoff,
+                                                   max_bond_dim=max_bond_dim)
+    opts = {'cutoff': cutoff,
+            'max_bond_dim': max_bond_dim}
+
+    return MPS(tensors=mpo.tensors, opts=opts, const=fd.const_e).to_sparse()
+
+
 def get_diagonal_coulomb_mpo(fqe_ham: FqeHamiltonian,
                              fd: FCIDUMP,
                              flat: bool = True,
@@ -152,5 +170,6 @@ _hamiltonian_func_dict = {
     sparse_hamiltonian.SparseHamiltonian: get_sparse_mpo,
     diagonal_coulomb.DiagonalCoulomb: get_diagonal_coulomb_mpo,
     diagonal_hamiltonian.Diagonal: get_diagonal_mpo,
-    restricted_hamiltonian.RestrictedHamiltonian: get_restricted_mpo
+    restricted_hamiltonian.RestrictedHamiltonian: get_complex_qc_mpo,
+    general_hamiltonian.General: get_complex_qc_mpo
     }
