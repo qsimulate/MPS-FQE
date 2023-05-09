@@ -249,13 +249,13 @@ class MPSWavefunction(MPS):
                                                       self.n_sites))
             return rdm1 + numpy.tril(rdm1, -1).transpose().conjugate()
 
-        rdm2 = numpy.zeros((self.n_sites, self.n_sites,
-                            self.n_sites, self.n_sites), dtype=complex)
-
-        for isite, jsite, ksite, lsite in itertools.product(
-                range(self.n_sites), repeat=4):
-            mpo = utils.two_body_projection_mpo(isite, jsite,
-                                                ksite, lsite,
-                                                self.n_sites)
-            rdm2[isite, jsite, ksite, lsite] = self.expectationValue(mpo)
-        return rdm2
+        if rank == 2:
+            rdm2 = numpy.zeros((self.n_sites, self.n_sites,
+                                self.n_sites, self.n_sites), dtype=complex)
+            for isite, jsite, ksite, lsite in itertools.product(
+                    range(self.n_sites), repeat=4):
+                mpo = utils.two_body_projection_mpo(isite, jsite,
+                                                    ksite, lsite,
+                                                    self.n_sites)
+                rdm2[isite, jsite, ksite, lsite] = self.expectationValue(mpo)
+            return rdm2

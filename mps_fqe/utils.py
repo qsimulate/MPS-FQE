@@ -59,7 +59,7 @@ def two_body_projection_mpo(isite: int, jsite: int, ksite: int, lsite: int,
 
     def gen_spin_terms(n_sites, c, d):
         yield c[isite // 2, isite % 2] * c[jsite // 2, jsite % 2] \
-            * d[lsite // 2, lsite % 2] * d[ksite // 2, ksite % 2]
+            * d[ksite // 2, ksite % 2] * d[lsite // 2, lsite % 2]
 
     def gen_spinfree_terms(n_sites, c, d):
         for sigma in [0, 1]:
