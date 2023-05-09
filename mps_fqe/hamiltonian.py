@@ -14,8 +14,7 @@ allowed_types = [
     sparse_hamiltonian.SparseHamiltonian,
     diagonal_coulomb.DiagonalCoulomb,
     diagonal_hamiltonian.Diagonal,
-    restricted_hamiltonian.RestrictedHamiltonian,
-    general_hamiltonian.General
+    restricted_hamiltonian.RestrictedHamiltonian
 ]
 
 
@@ -170,6 +169,5 @@ _hamiltonian_func_dict = {
     sparse_hamiltonian.SparseHamiltonian: get_sparse_mpo,
     diagonal_coulomb.DiagonalCoulomb: get_diagonal_coulomb_mpo,
     diagonal_hamiltonian.Diagonal: get_diagonal_mpo,
-    restricted_hamiltonian.RestrictedHamiltonian: get_complex_qc_mpo,
-    general_hamiltonian.General: get_complex_qc_mpo
+    restricted_hamiltonian.RestrictedHamiltonian: get_complex_qc_mpo
     }
