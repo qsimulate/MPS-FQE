@@ -44,13 +44,13 @@ def test_rdm2(n_electrons, sz, n_orbitals):
                          fqe_wfn.rdm('0^ 2^ 0 4'),
                          atol=1e-12)
 
-    assert numpy.isclose(mps.rdm('1^ 3^ 1 5'),
-                         fqe_wfn.rdm('1^ 3^ 1 5'),
+    assert numpy.isclose(mps.rdm('1^ 3^ 3 5'),
+                         fqe_wfn.rdm('1^ 3^ 3 5'),
                          atol=1e-12)
 
-    # assert numpy.allclose(mps.rdm('i^ j^ k l'),
-    #                       fqe_wfn.rdm('i^ j^ k l'),
-    #                       atol=1E-12)
+    assert numpy.allclose(mps.rdm('i^ j^ k l'),
+                          fqe_wfn.rdm('i^ j^ k l'),
+                          atol=1E-12)
 
 
 @pytest.mark.parametrize("n_electrons,sz,n_orbitals", [(2, 2, 4),

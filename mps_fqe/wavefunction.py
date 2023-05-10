@@ -217,8 +217,10 @@ class MPSWavefunction(MPS):
             raise ValueError(f"method needs to be 'tddmrg' or\
 'rk4', '{method}' given")
 
-    def expectationValue(self, hamiltonian: MPS) -> float:
-        return MPE(self, hamiltonian, self)[0:2].expectation
+    def expectationValue(self, hamiltonian: MPS,
+                         brawfn: Optional["MPSWavefunction"] = None) -> float:
+        bra = self if brawfn is None else brawfn
+        return MPE(bra, hamiltonian, self)[0:2].expectation
 
     def get_FCITensor(self) -> FlatSparseTensor:
         return functools.reduce(lambda x, y: numpy.tensordot(x, y, axes=1),
