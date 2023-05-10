@@ -87,8 +87,13 @@ def get_restricted_mpo(fqe_ham: FqeHamiltonian,
     fd.h1e = fqe_ham.tensors()[0]
     fd.g2e = numpy.einsum("ikjl", -2 * fqe_ham.tensors()[1])
     hamil = Hamiltonian(fd, flat=flat)
-    mpo, _ = hamil.build_qc_mpo().compress(cutoff=cutoff,
-                                           max_bond_dim=max_bond_dim)
+    if numpy.iscomplexobj(fd.h1e) or numpy.iscomplexobj(fd.g2e):
+        mpo = hamil.build_complex_qc_mpo()
+    else:
+        mpo = hamil.build_qc_mpo()
+
+    mpo, _ = mpo.compress(cutoff=cutoff,
+                          max_bond_dim=max_bond_dim)
     opts = {'cutoff': cutoff,
             'max_bond_dim': max_bond_dim}
 
