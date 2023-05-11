@@ -34,10 +34,6 @@ class MPSWavefunction(MPS):
                               max_bond_dim: int = -1,
                               cutoff: float = 1E-12) \
             -> "MPSWavefunction":
-        opts = {
-            'max_bond_dim': max_bond_dim,
-            'cutoff': cutoff
-        }
         sectors = fqe_wfn.sectors()
 
         def get_fci_FlatSparseTensor(sectors):
@@ -93,8 +89,9 @@ class MPSWavefunction(MPS):
             return FlatSparseTensor(q_labels_arr, shapes, data)
 
         fci_tensor = get_fci_FlatSparseTensor(sectors)
+        tensors = decompose_mps(fci_tensor)
 
-        return cls(tensors=decompose_mps(fci_tensor), opts=opts)
+        return cls(tensors=tensors)
 
     def to_fqe_wavefunction(self,
                             broken: Optional[Union[List[str], str]] = None)\
@@ -129,16 +126,9 @@ class MPSWavefunction(MPS):
         return fqe_wfn
 
     @classmethod
-    def from_pyblock3_mps(cls,
-                          mps: MPS,
-                          max_bond_dim: int = -1,
-                          cutoff: float = 1E-12) -> "MPSWavefunction":
-        opts = {
-            'max_bond_dim': max_bond_dim,
-            'cutoff': cutoff
-        }
-
-        return cls(tensors=mps.tensors, opts=opts)
+    def from_pyblock3_mps(cls, mps: MPS) -> "MPSWavefunction":
+        return cls(tensors=mps.tensors, opts=mps.opts, dq=mps.dq,
+                   const=mps.const)
 
     def print_wfn(self) -> None:
         for ii, tensor in enumerate(self.tensors):
@@ -153,10 +143,8 @@ class MPSWavefunction(MPS):
 
     def compress(self, **opts) -> Tuple["MPSWavefunction", float]:
         mps, merror = super().compress(**opts)
-        max_bond_dim = opts.get('max_bond_dim', -1)
-        cutoff = opts.get('cutoff', 1E-12)
 
-        return self.from_pyblock3_mps(mps, max_bond_dim, cutoff), merror
+        return self.from_pyblock3_mps(mps), merror
 
     def apply(self,
               hamiltonian: Union[FqeHamiltonian, MPS]) -> "MPSWavefunction":
