@@ -3,7 +3,7 @@ from typing import Optional
 
 from fqe.hamiltonians.hamiltonian import Hamiltonian as FqeHamiltonian
 from fqe.hamiltonians import diagonal_coulomb, diagonal_hamiltonian, \
-    restricted_hamiltonian, sparse_hamiltonian, general_hamiltonian
+    restricted_hamiltonian, sparse_hamiltonian
 
 from pyblock3.hamiltonian import Hamiltonian
 from pyblock3.fcidump import FCIDUMP
@@ -15,7 +15,6 @@ allowed_types = [
     diagonal_coulomb.DiagonalCoulomb,
     diagonal_hamiltonian.Diagonal,
     restricted_hamiltonian.RestrictedHamiltonian,
-    general_hamiltonian.General
 ]
 
 
@@ -154,5 +153,4 @@ _hamiltonian_func_dict = {
     diagonal_coulomb.DiagonalCoulomb: get_diagonal_coulomb_mpo,
     diagonal_hamiltonian.Diagonal: get_diagonal_mpo,
     restricted_hamiltonian.RestrictedHamiltonian: get_restricted_mpo,
-    general_hamiltonian.General: get_restricted_mpo
     }
