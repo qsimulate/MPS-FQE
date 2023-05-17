@@ -76,3 +76,32 @@ def two_body_projection_mpo(isite: int, jsite: int, ksite: int, lsite: int,
                               max_bond_dim=-1, const=0)
 
     return mpo.to_sparse()
+
+
+def three_body_projection_mpo(isite: int, jsite: int, ksite: int,
+                              lsite: int, msite: int, nsite: int,
+                              n_sites: int, flat: bool = True,
+                              spinfree: bool = True):
+    fd = FCIDUMP(pg="c1", n_sites=n_sites)
+
+    def gen_spin_terms(n_sites, c, d):
+        yield c[isite // 2, isite % 2] * c[jsite // 2, jsite % 2] \
+            * c[ksite // 2, ksite % 2] * d[lsite // 2, lsite % 2] \
+            * d[msite // 2, msite % 2] * d[nsite // 2, nsite % 2]
+
+    def gen_spinfree_terms(n_sites, c, d):
+        for sigma in [0, 1]:
+            for rho in [0, 1]:
+                for tau in [0, 1]:
+                    yield c[isite, sigma] * c[jsite, rho] * c[ksite, tau]\
+                        * d[lsite, sigma] * d[msite, rho] * d[nsite, tau]
+
+    hamil = Hamiltonian(fd, flat)
+    if spinfree:
+        mpo = hamil.build_mpo(gen_spinfree_terms, cutoff=1E-12,
+                              max_bond_dim=-1, const=0)
+    else:
+        mpo = hamil.build_mpo(gen_spin_terms, cutoff=1E-12,
+                              max_bond_dim=-1, const=0)
+
+    return mpo.to_sparse()

@@ -229,8 +229,8 @@ class MPSWavefunction(MPS):
     def rdm(self, string: str, brawfn: Optional["MPSWavefunction"] = None
             ) -> Union[complex, numpy.ndarray]:
         rank = len(string.split()) // 2
-        if rank > 2:
-            raise ValueError("rdm is only implemented up to 2 bodies.")
+        if rank > 3:
+            raise ValueError("rdm is only implemented up to 3 bodies.")
         if brawfn is not None:
             raise ValueError("Transition rdm is not implemented yet.")
 
@@ -261,3 +261,17 @@ class MPSWavefunction(MPS):
                                                     self.n_sites)
                 rdm2[isite, jsite, ksite, lsite] = self.expectationValue(mpo)
             return rdm2
+
+        if rank == 3:
+            rdm3 = numpy.zeros((self.n_sites, self.n_sites,
+                                self.n_sites, self.n_sites,
+                                self.n_sites, self.n_sites), dtype=complex)
+            for isite, jsite, ksite, lsite, msite, nsite in itertools.product(
+                    range(self.n_sites), repeat=6):
+                mpo = utils.three_body_projection_mpo(isite, jsite,
+                                                      ksite, lsite,
+                                                      msite, nsite,
+                                                      self.n_sites)
+                rdm3[isite, jsite, ksite, lsite, msite, nsite] = \
+                    self.expectationValue(mpo)
+            return rdm3
