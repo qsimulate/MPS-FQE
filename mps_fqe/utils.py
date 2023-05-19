@@ -5,10 +5,6 @@ from pyblock3.hamiltonian import Hamiltonian
 from pyblock3.fcidump import FCIDUMP
 
 
-_spin_value = {"alpha": 0,
-               "beta": 1}
-
-
 def fqe_sign_change(fqedata: FqeData) -> numpy.ndarray:
     ndim = fqedata.norb()
     alpha_str = fqedata.get_fcigraph().string_alpha_all().astype(int)
