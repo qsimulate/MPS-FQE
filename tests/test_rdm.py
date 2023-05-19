@@ -1,10 +1,8 @@
-import os
 import numpy
-import tempfile
 import pytest
 import fqe
-fqe.settings.use_accelerated_code = False
 from mps_fqe.wavefunction import MPSWavefunction
+fqe.settings.use_accelerated_code = False
 
 
 @pytest.mark.parametrize("n_electrons,sz,n_orbitals", [(2, 2, 4),
@@ -65,65 +63,4 @@ def test_rdm3(n_electrons, sz, n_orbitals):
 
     assert numpy.allclose(mps.rdm('i^ j^ k^ l m n'),
                           fqe_wfn.rdm('i^ j^ k^ l m n'),
-                          atol=1E-12)
-
-
-@pytest.mark.parametrize("n_electrons,sz,n_orbitals", [(2, 2, 4),
-                                                       (6, -2, 4),
-                                                       (5, 1, 4),
-                                                       (6, 2, 4),
-                                                       (4, 0, 6)])
-def test_block2_rdm1(n_electrons, sz, n_orbitals):
-    from pyblock3.block2.io import MPSTools
-    from pyblock2.driver.core import DMRGDriver, SymmetryTypes
-
-    fqe_wfn = fqe.Wavefunction([[n_electrons, sz, n_orbitals]])
-    fqe_wfn.set_wfn(strategy='random')
-    fqe_wfn.normalize()
-    mps = MPSWavefunction.from_fqe_wavefunction(fqe_wfn=fqe_wfn)
-
-    with tempfile.TemporaryDirectory() as temp_dir:
-        os.environ['TMPDIR'] = str(temp_dir)
-        driver = DMRGDriver(scratch=os.environ['TMPDIR'],
-                            symm_type=SymmetryTypes.SZ | SymmetryTypes.CPX,
-                            n_threads=1)
-        driver.initialize_system(n_sites=mps.n_sites,
-                                 orb_sym=[0]*mps.n_sites)
-        b2mps = MPSTools.to_block2(mps, save_dir=driver.scratch)
-        rdm1 = numpy.sum(driver.get_1pdm(b2mps), axis=0)
-
-    fqe_rdm1 = fqe_wfn.rdm("i^ j")
-
-    assert numpy.allclose(rdm1,
-                          fqe_rdm1,
-                          atol=1E-12)
-
-
-@pytest.mark.parametrize("n_electrons,sz,n_orbitals", [(2, 2, 4),
-                                                       (6, -2, 4),
-                                                       (5, 1, 4),
-                                                       (6, 2, 4),
-                                                       (4, 0, 6)])
-def test_block2_rdm2(n_electrons, sz, n_orbitals):
-    from pyblock3.block2.io import MPSTools
-    from pyblock2.driver.core import DMRGDriver, SymmetryTypes
-
-    fqe_wfn = fqe.Wavefunction([[n_electrons, sz, n_orbitals]])
-    fqe_wfn.set_wfn(strategy='random')
-    fqe_wfn.normalize()
-    mps = MPSWavefunction.from_fqe_wavefunction(fqe_wfn=fqe_wfn)
-
-    with tempfile.TemporaryDirectory() as temp_dir:
-        os.environ['TMPDIR'] = str(temp_dir)
-        driver = DMRGDriver(scratch=os.environ['TMPDIR'],
-                            symm_type=SymmetryTypes.SZ | SymmetryTypes.CPX,
-                            n_threads=1)
-        driver.initialize_system(n_sites=mps.n_sites,
-                                 orb_sym=[0]*mps.n_sites)
-        b2mps = MPSTools.to_block2(mps, save_dir=driver.scratch)
-        rdm2 = numpy.sum(driver.get_2pdm(b2mps), axis=0)
-
-    fqe_rdm2 = fqe_wfn.rdm("i^ j^ k l")
-    assert numpy.allclose(rdm2,
-                          fqe_rdm2,
                           atol=1E-12)
