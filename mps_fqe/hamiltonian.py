@@ -1,20 +1,4 @@
-import numpy
-from typing import Optional
 
-from fqe.hamiltonians.hamiltonian import Hamiltonian as FqeHamiltonian
-from fqe.hamiltonians import diagonal_coulomb, diagonal_hamiltonian, \
-    restricted_hamiltonian, sparse_hamiltonian
-
-from pyblock3.hamiltonian import Hamiltonian
-from pyblock3.fcidump import FCIDUMP
-from pyblock3.algebra.mps import MPS
-
-
-allowed_types = [
-    sparse_hamiltonian.SparseHamiltonian,
-    diagonal_coulomb.DiagonalCoulomb,
-    diagonal_hamiltonian.Diagonal,
-    restricted_hamiltonian.RestrictedHamiltonian,
 ]
 
 
@@ -157,5 +141,5 @@ _hamiltonian_func_dict = {
     sparse_hamiltonian.SparseHamiltonian: get_sparse_mpo,
     diagonal_coulomb.DiagonalCoulomb: get_diagonal_coulomb_mpo,
     diagonal_hamiltonian.Diagonal: get_diagonal_mpo,
-    restricted_hamiltonian.RestrictedHamiltonian: get_restricted_mpo,
+    restricted_hamiltonian.RestrictedHamiltonian: get_restricted_mpo
     }
