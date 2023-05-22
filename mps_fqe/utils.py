@@ -16,8 +16,7 @@ def fqe_sign_change(fqedata: FqeData) -> numpy.ndarray:
 
     cumsum_alpha_occ = numpy.cumsum(alpha_occ, axis=1)
     n_alpha, n_beta = sum(alpha_occ[0]), sum(beta_occ[0])
-    swaps = numpy.sum(cumsum_alpha_occ[:, None, :]
-                      * beta_occ[None, :, :], axis=2) + (n_alpha * n_beta)
+    swaps = cumsum_alpha_occ @ beta_occ.T + (n_alpha * n_beta)
     fermionic_sign = numpy.where(swaps % 2 == 0, 1.0, -1.0)
     return fermionic_sign
 
