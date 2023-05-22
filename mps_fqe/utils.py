@@ -1,5 +1,6 @@
-import numpy
+import itertools
 
+import numpy
 from fqe.fqe_data import FqeData
 from pyblock3.hamiltonian import Hamiltonian
 from pyblock3.fcidump import FCIDUMP
@@ -86,8 +87,8 @@ def three_body_projection_mpo(isite: int, jsite: int, ksite: int,
 
     def gen_spinfree_terms(n_sites, c, d):
         for sigma, rho, tau in itertools.product([0, 1], repeat=3):
-             yield c[isite, sigma] * c[jsite, rho] * c[ksite, tau]\
-                 * d[lsite, sigma] * d[msite, rho] * d[nsite, tau]
+            yield c[isite, sigma] * c[jsite, rho] * c[ksite, tau]\
+                * d[lsite, sigma] * d[msite, rho] * d[nsite, tau]
 
     hamil = Hamiltonian(fd, flat)
     if spinfree:
