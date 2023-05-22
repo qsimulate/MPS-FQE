@@ -85,7 +85,7 @@ def three_body_projection_mpo(isite: int, jsite: int, ksite: int,
             * d[msite // 2, msite % 2] * d[nsite // 2, nsite % 2]
 
     def gen_spinfree_terms(n_sites, c, d):
-        for sigma, rho, tau in intertools.product([0, 1], repeat=3):
+        for sigma, rho, tau in itertools.product([0, 1], repeat=3):
              yield c[isite, sigma] * c[jsite, rho] * c[ksite, tau]\
                  * d[lsite, sigma] * d[msite, rho] * d[nsite, tau]
 
