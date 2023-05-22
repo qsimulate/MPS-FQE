@@ -1,8 +1,8 @@
 import functools
-import numpy
 import itertools
 from typing import List, Union, Optional, Tuple
 
+import numpy
 import fqe
 from fqe.hamiltonians.hamiltonian import Hamiltonian as FqeHamiltonian
 from fqe.hamiltonians.sparse_hamiltonian import SparseHamiltonian
@@ -230,9 +230,11 @@ class MPSWavefunction(MPS):
             ) -> Union[complex, numpy.ndarray]:
         rank = len(string.split()) // 2
         if rank > 3:
-            raise ValueError("rdm is only implemented up to 3 bodies.")
+            raise ValueError("RDM is only implemented up to 3 bodies.")
         if brawfn is not None:
             raise ValueError("Transition rdm is not implemented yet.")
+        if len(string.split()) % 2 != 0:
+            raise ValueError("RDM must have even number of operators.")
 
         # Get an individual rdm element
         if any(char.isdigit() for char in string):
