@@ -1,6 +1,5 @@
 import numpy as np
 from pyscf import gto, scf, lo, ao2mo
-from openfermionpyscf._run_pyscf import compute_integrals
 from pyblock3.fcidump import FCIDUMP
 from pyblock3.algebra.mpe import MPE
 from pyblock3.algebra.mps import MPS, MPSInfo
@@ -29,22 +28,30 @@ def get_geom(r):
     return geom
 
 
-def localize_orbitals(pyscf_mf):
-    mo_occ = pyscf_mf.mo_occ
-    mo_coeff = pyscf_mf.mo_coeff
-    assert len(mo_occ.shape) == 1
-    docc_idx = np.where(np.isclose(mo_occ, 2.))[0]
-    socc_idx = np.where(np.isclose(mo_occ, 1.))[0]
-    virt_idx = np.where(np.isclose(mo_occ, 0.))[0]
+def localize_orbitals(pyscf_mf, method='pipek-mezey'):
+    if method == 'pipek-mezey':
+        mo_occ = pyscf_mf.mo_occ
+        mo_coeff = pyscf_mf.mo_coeff
+        docc_idx = np.where(np.isclose(mo_occ, 2.))[0]
+        socc_idx = np.where(np.isclose(mo_occ, 1.))[0]
+        virt_idx = np.where(np.isclose(mo_occ, 0.))[0]
 
-    # Pipek-Mezey localization
-    loc_docc_mo = lo.PM(pyscf_mf.mol, mo_coeff[:, docc_idx]).kernel(verbose=5)
-    loc_socc_mo = lo.PM(pyscf_mf.mol, mo_coeff[:, socc_idx]).kernel(verbose=5)
-    loc_virt_mo = lo.PM(pyscf_mf.mol, mo_coeff[:, virt_idx]).kernel(verbose=5)
+        # Pipek-Mezey localization
+        loc_docc_mo = lo.PM(pyscf_mf.mol,
+                            mo_coeff[:, docc_idx]).kernel(verbose=5)
+        loc_socc_mo = lo.PM(pyscf_mf.mol,
+                            mo_coeff[:, socc_idx]).kernel(verbose=5)
+        loc_virt_mo = lo.PM(pyscf_mf.mol,
+                            mo_coeff[:, virt_idx]).kernel(verbose=5)
 
-    loc_mo_coeff = np.hstack((loc_docc_mo, loc_socc_mo, loc_virt_mo))
-    loc_mo_coeff = np.hstack((loc_docc_mo, loc_virt_mo))
-    pyscf_mf.mo_coeff = loc_mo_coeff
+        loc_mo_coeff = np.hstack((loc_docc_mo, loc_socc_mo, loc_virt_mo))
+        loc_mo_coeff = np.hstack((loc_docc_mo, loc_virt_mo))
+        pyscf_mf.mo_coeff = loc_mo_coeff
+    elif method == 'meta-lowdin':
+        pyscf_mf.mo_coeff = lo.orth_ao(pyscf_mf.mol, method='meta_lowdin')
+    else:
+        raise ValueError("Localization method must \
+        'pipek-mezey' or 'meta-lowdin'")
 
 
 def get_hf_mps(nele, sz, norbs, bdim, e0=0, occ=None):
@@ -92,7 +99,7 @@ if __name__ == '__main__':
     # Get original and reference HF MPS and MPO
     fd = FCIDUMP(pg='c1', n_sites=norbs, n_elec=nele, twos=sz, ipg=0,
                  uhf=False, h1e=h1e, g2e=g2e, const_e=e0)
-    opts = {'cutoff': 0,
+    opts = {'cutoff': 1E-16,
             'max_bond_dim': -1}
     mpo_original = Hamiltonian(fd, flat=True).build_qc_mpo()
     mpo_original = MPS(tensors=mpo_original.tensors, const=fd.const_e,
@@ -103,7 +110,7 @@ if __name__ == '__main__':
                                norbs=norbs,
                                bdim=-1,
                                e0=e0)
-    E_reference = get_energy(mps_reference, mpo_original, bdim=-1)
+    E_ref = get_energy(mps_reference, mpo_original, bdim=1024)
 
     # Get bdim=400 energy in original representation
     mps_original = get_hf_mps(nele=nele,
@@ -113,9 +120,8 @@ if __name__ == '__main__':
                               e0=e0)
     E_original = get_energy(mps_original, mpo_original, bdim=400)
 
-
     # Get localized and reordered HF MPS and MPO
-    localize_orbitals(mf)
+    localize_orbitals(mf, method='meta-lowdin')
     h1e = mf.mo_coeff.T @ mf.get_hcore() @ mf.mo_coeff
     g2e = ao2mo.restore(1, ao2mo.kernel(mol, mf.mo_coeff),
                         norbs)
@@ -123,7 +129,7 @@ if __name__ == '__main__':
     fd = FCIDUMP(pg='c1', n_sites=norbs, n_elec=nele, twos=sz, ipg=0,
                  uhf=False, h1e=h1e, g2e=g2e, const_e=e0)
     mpo_reordered = Hamiltonian(fd, flat=True).build_qc_mpo()
-    opts = {'cutoff': 0,
+    opts = {'cutoff': 1E-16,
             'max_bond_dim': -1}
     mpo_reordered = MPS(tensors=mpo_reordered.tensors, const=fd.const_e,
                         opts=opts).to_sparse()
@@ -142,10 +148,8 @@ if __name__ == '__main__':
                                occ=occ)
     E_reordered = get_energy(mps_reordered, mpo_reordered, bdim=400)
 
-    print("Reference energy: {}".format(E_reference))
-    print("Reference bdim: {}".format(mps_reference.bond_dim))
-    print("% Error at bdim=400")
-    print("Original basis: {}".format(
-        np.abs((E_original - E_reference)/E_reference)*100))
-    print("Localized and reordered basis: {}".format(
-        np.abs((E_reordered - E_reference)/E_reference)*100))
+    print(f"Reference energy: {E_ref}")
+    print(f"Reference bdim: {mps_reference.bond_dim}")
+    print("Absolute error at bdim=400")
+    print(f"Original basis: {np.abs(E_original - E_ref)}")
+    print(f"Localized and reordered basis: {np.abs(E_reordered - E_ref)}")
