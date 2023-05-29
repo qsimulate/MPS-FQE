@@ -1,5 +1,7 @@
+import os
 import functools
 import itertools
+import tempfile
 from typing import List, Union, Optional, Tuple
 
 import numpy
@@ -7,6 +9,8 @@ import fqe
 from fqe.hamiltonians.hamiltonian import Hamiltonian as FqeHamiltonian
 from fqe.hamiltonians.sparse_hamiltonian import SparseHamiltonian
 from openfermion import FermionOperator
+from pyblock2.driver.core import DMRGDriver, SymmetryTypes
+from pyblock3.block2.io import MPSTools
 from pyblock3.algebra.flat import FlatSparseTensor
 from pyblock3.algebra.mps import MPS
 from pyblock3.algebra.mpe import MPE, CachedMPE
@@ -214,8 +218,8 @@ class MPSWavefunction(MPS):
         return functools.reduce(lambda x, y: numpy.tensordot(x, y, axes=1),
                                 self.tensors)
 
-    def rdm(self, string: str, brawfn: Optional["MPSWavefunction"] = None
-            ) -> Union[complex, numpy.ndarray]:
+    def rdm(self, string: str, brawfn: Optional["MPSWavefunction"] = None,
+            block2: bool = False) -> Union[complex, numpy.ndarray]:
         rank = len(string.split()) // 2
         if rank > 3:
             raise ValueError("RDM is only implemented up to 3 bodies.")
@@ -231,14 +235,21 @@ class MPSWavefunction(MPS):
                 n_sites=self.n_sites)
             return self.expectationValue(mpo)
 
+        if block2:
+            if brawfn is not None:
+                raise ValueError("Transition density not implemented \
+                with block2 driver.")
+            return self._block2_rdm(rank)
+
         # Get the entire rdm
         if rank == 1:
             rdm1 = numpy.zeros((self.n_sites, self.n_sites), dtype=complex)
             for isite in range(self.n_sites):
                 for jsite in range(isite+1):
-                    rdm1[isite, jsite] = self.expectationValue(
-                        utils.one_body_projection_mpo(isite, jsite,
-                                                      self.n_sites))
+                    mpo = utils.one_body_projection_mpo(isite, jsite,
+                                                        self.n_sites)
+                    rdm1[isite, jsite] = self.expectationValue(mpo,
+                                                               brawfn=brawfn)
             return rdm1 + numpy.tril(rdm1, -1).transpose().conjugate()
 
         if rank == 2:
@@ -249,7 +260,8 @@ class MPSWavefunction(MPS):
                 mpo = utils.two_body_projection_mpo(isite, jsite,
                                                     ksite, lsite,
                                                     self.n_sites)
-                rdm2[isite, jsite, ksite, lsite] = self.expectationValue(mpo)
+                rdm2[isite, jsite, ksite, lsite] = \
+                    self.expectationValue(mpo, brawfn)
             return rdm2
 
         if rank == 3:
@@ -263,5 +275,34 @@ class MPSWavefunction(MPS):
                                                       msite, nsite,
                                                       self.n_sites)
                 rdm3[isite, jsite, ksite, lsite, msite, nsite] = \
-                    self.expectationValue(mpo)
+                    self.expectationValue(mpo, brawfn)
             return rdm3
+
+    def _block2_rdm(self, rank):
+        if rank > 3:
+            raise ValueError("Only implemented up to 3pdm.")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            os.environ['TMPDIR'] = str(temp_dir)
+            driver = DMRGDriver(scratch=os.environ['TMPDIR'],
+                                symm_type=SymmetryTypes.SZ | SymmetryTypes.CPX,
+                                n_threads=1)
+            driver.initialize_system(n_sites=self.n_sites,
+                                     orb_sym=[0]*self.n_sites)
+            b2mps = MPSTools.to_block2(self, save_dir=driver.scratch)
+            if rank == 1:
+                rdm = numpy.sum(driver.get_1pdm(b2mps), axis=0)
+            elif rank == 2:
+                b2rdm = driver.get_2pdm(b2mps)
+                rdm = b2rdm[0] + b2rdm[2] \
+                    - (numpy.einsum("ijlk", b2rdm[1])
+                       + numpy.einsum("jikl", b2rdm[1]))
+            elif rank == 3:
+                b2rdm = driver.get_3pdm(b2mps)
+                rdm = b2rdm[0] + b2rdm[3] \
+                    + numpy.einsum("ijklmn->ijkmnl", b2rdm[1]) \
+                    + numpy.einsum("ijklmn->ikjmln", b2rdm[1]) \
+                    + numpy.einsum("ijklmn->kijlmn", b2rdm[1]) \
+                    + numpy.einsum("ijklmn->ijknlm", b2rdm[2]) \
+                    + numpy.einsum("ijklmn->jiklnm", b2rdm[2]) \
+                    + numpy.einsum("ijklmn->jkilmn", b2rdm[2])
+        return rdm

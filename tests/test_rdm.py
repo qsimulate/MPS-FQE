@@ -5,10 +5,10 @@ from mps_fqe.wavefunction import MPSWavefunction
 fqe.settings.use_accelerated_code = False
 
 
-@pytest.mark.parametrize("n_electrons,sz,n_orbitals", [(2, 2, 4),
-                                                       (6, -2, 4),
-                                                       (5, 1, 4),
+@pytest.mark.parametrize("n_electrons,sz,n_orbitals", [(6, -2, 4),
                                                        (6, 2, 4),
+                                                       (2, 2, 4),
+                                                       (5, 1, 4),
                                                        (4, 0, 6)])
 def test_rdm1(n_electrons, sz, n_orbitals):
     fqe_wfn = fqe.Wavefunction([[n_electrons, sz, n_orbitals]])
