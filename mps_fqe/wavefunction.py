@@ -187,7 +187,7 @@ class MPSWavefunction(MPS):
         try:
             mpe.tddmrg(bdims=[bdim], dt=-dt * 1j, iprint=0, n_sweeps=steps,
                        normalize=False, n_sub_sweeps=n_sub_sweeps)
-        except RuntimeError as exc:
+        except RuntimeError:
             pass
 
         return type(self)(tensors=mps.tensors, opts=mps.opts)
@@ -213,7 +213,9 @@ class MPSWavefunction(MPS):
             hamiltonian = mpo_from_fqe_hamiltonian(hamiltonian,
                                                    n_sites=self.n_sites)
         if method.lower() == "tddmrg":
-            return self.tddmrg(time, hamiltonian, steps, n_sub_sweeps=n_sub_sweeps, cached=cached)
+            return self.tddmrg(time, hamiltonian, steps,
+                               n_sub_sweeps=n_sub_sweeps,
+                               cached=cached)
         elif method.lower() == "rk4":
             return self.rk4_apply(time, hamiltonian, steps)
         else:
