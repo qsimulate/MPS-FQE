@@ -85,7 +85,17 @@ def get_restricted_mpo(fqe_ham: FqeHamiltonian,
                        max_bond_dim: int = -1) -> "MPS":
     # Generate the restricted hamiltonian MPO
     fd.h1e = fqe_ham.tensors()[0]
-    fd.g2e = numpy.einsum("ikjl", -2 * fqe_ham.tensors()[1])
+    ntensor = len(fqe_ham.tensors())
+    if ntensor == 1:
+        n = fd.h1e.shape[0]
+        fd.g2e = numpy.zeros((n, n, n, n), dtype=fd.h1e.dtype)
+    elif ntensor == 2:
+        fd.g2e = numpy.einsum("ikjl", -2 * fqe_ham.tensors()[1])
+    elif ntensor > 2:
+        raise ValueError("3-body or higher interactions are not supported")
+    else:
+        raise ValueError(f"Bad number of tensors in RestrictedHamiltonian: {ntensor}")
+
     hamil = Hamiltonian(fd, flat=flat)
     if numpy.iscomplexobj(fd.h1e) or numpy.iscomplexobj(fd.g2e):
         mpo = hamil.build_complex_qc_mpo()
