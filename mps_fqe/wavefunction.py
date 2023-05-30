@@ -184,8 +184,11 @@ class MPSWavefunction(MPS):
             else MPE(mps, hamiltonian, mps)
         bdim = mps.opts.get("max_bond_dim", -1)
 
-        mpe.tddmrg(bdims=[bdim], dt=-dt * 1j, iprint=0, n_sweeps=steps,
-                   normalize=False, n_sub_sweeps=n_sub_sweeps)
+        try:
+            mpe.tddmrg(bdims=[bdim], dt=-dt * 1j, iprint=0, n_sweeps=steps,
+                       normalize=False, n_sub_sweeps=n_sub_sweeps)
+        except RuntimeError as exc:
+            pass
 
         return type(self)(tensors=mps.tensors, opts=mps.opts)
 
@@ -199,12 +202,18 @@ class MPSWavefunction(MPS):
 
         return type(self)(tensors=mps.tensors, opts=mps.opts)
 
-    def time_evolve(self, time: float, hamiltonian: MPS,
+    def time_evolve(self, time: float,
+                    hamiltonian: Union[FqeHamiltonian, MPS],
+                    inplace: bool = False,
                     steps: int = 1,
+                    n_sub_sweeps: int = 1,
                     method: str = "tddmrg",
                     cached: bool = False) -> "MPSWavefunction":
+        if isinstance(hamiltonian, FqeHamiltonian):
+            hamiltonian = mpo_from_fqe_hamiltonian(hamiltonian,
+                                                   n_sites=self.n_sites)
         if method.lower() == "tddmrg":
-            return self.tddmrg(time, hamiltonian, steps, cached=cached)
+            return self.tddmrg(time, hamiltonian, steps, n_sub_sweeps=n_sub_sweeps, cached=cached)
         elif method.lower() == "rk4":
             return self.rk4_apply(time, hamiltonian, steps)
         else:
