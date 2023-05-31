@@ -136,8 +136,16 @@ class MPSWavefunction(MPS):
         return fqe_wfn
 
     @classmethod
-    def from_pyblock3_mps(cls, mps: MPS) -> "MPSWavefunction":
-        return cls(tensors=mps.tensors, opts=mps.opts, dq=mps.dq,
+    def from_pyblock3_mps(cls, mps: MPS,
+                          max_bond_dim: Optional[int] = None,
+                          cutoff: Optional[float] = None) -> "MPSWavefunction":
+        opts = mps.opts
+        if max_bond_dim is not None:
+            opts['max_bond_dim'] = max_bond_dim
+        if cutoff is not None:
+            opts['cutoff'] = cutoff
+
+        return cls(tensors=mps.tensors, opts=opts, dq=mps.dq,
                    const=mps.const)
 
     def print_wfn(self) -> None:
