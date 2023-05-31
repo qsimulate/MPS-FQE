@@ -82,6 +82,7 @@ def get_energy(mps, mpo, bdim):
 
 if __name__ == '__main__':
     r = 1.5
+    bdim = 200
     geom = get_geom(r)
     mol = gto.M(atom=geom, basis='sto6g', verbose=0)
     mf = scf.RHF(mol)
@@ -108,17 +109,17 @@ if __name__ == '__main__':
     mps_reference = get_hf_mps(nele=nele,
                                sz=sz,
                                norbs=norbs,
-                               bdim=-1,
+                               bdim=1024,
                                e0=e0)
     E_ref = get_energy(mps_reference, mpo_original, bdim=1024)
 
-    # Get bdim=400 energy in original representation
+    # Get truncated bdim energy in original representation
     mps_original = get_hf_mps(nele=nele,
                               sz=sz,
                               norbs=norbs,
-                              bdim=400,
+                              bdim=bdim,
                               e0=e0)
-    E_original = get_energy(mps_original, mpo_original, bdim=400)
+    E_original = get_energy(mps_original, mpo_original, bdim=bdim)
 
     # Get localized and reordered HF MPS and MPO
     localize_orbitals(mf, method='meta-lowdin')
@@ -134,7 +135,7 @@ if __name__ == '__main__':
     mpo_reordered = MPS(tensors=mpo_reordered.tensors, const=fd.const_e,
                         opts=opts).to_sparse()
 
-    # Get bdim=400 energy in reordered and localized representation
+    # Get truncated bdim energy in reordered and localized representation
     occ = [0]*norbs
     for i, o in enumerate(order):
         if o < nele // 2:
@@ -143,13 +144,13 @@ if __name__ == '__main__':
     mps_reordered = get_hf_mps(nele=nele,
                                sz=sz,
                                norbs=norbs,
-                               bdim=400,
+                               bdim=bdim,
                                e0=e0,
                                occ=occ)
-    E_reordered = get_energy(mps_reordered, mpo_reordered, bdim=400)
+    E_reordered = get_energy(mps_reordered, mpo_reordered, bdim=bdim)
 
     print(f"Reference energy: {E_ref}")
     print(f"Reference bdim: {mps_reference.bond_dim}")
-    print("Absolute error at bdim=400")
+    print(f"Absolute error at bdim={bdim}")
     print(f"Original basis: {np.abs(E_original - E_ref)}")
     print(f"Localized and reordered basis: {np.abs(E_reordered - E_ref)}")
