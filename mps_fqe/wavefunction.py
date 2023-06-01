@@ -1,7 +1,5 @@
-import os
 import functools
 import itertools
-import tempfile
 from typing import List, Union, Optional, Tuple
 
 import numpy
@@ -9,8 +7,6 @@ import fqe
 from fqe.hamiltonians.hamiltonian import Hamiltonian as FqeHamiltonian
 from fqe.hamiltonians.sparse_hamiltonian import SparseHamiltonian
 from openfermion import FermionOperator
-from pyblock2.driver.core import DMRGDriver, SymmetryTypes
-from pyblock3.block2.io import MPSTools
 from pyblock3.algebra.flat import FlatSparseTensor
 from pyblock3.algebra.mps import MPS
 from pyblock3.algebra.mpe import MPE, CachedMPE
@@ -136,17 +132,17 @@ class MPSWavefunction(MPS):
         return fqe_wfn
 
     @classmethod
-    def from_pyblock3_mps(cls, mps: MPS,
-                          max_bond_dim: Optional[int] = None,
-                          cutoff: Optional[float] = None) -> "MPSWavefunction":
-        opts = mps.opts
-        if max_bond_dim is not None:
-            opts['max_bond_dim'] = max_bond_dim
-        if cutoff is not None:
-            opts['cutoff'] = cutoff
+    def from_pyblock3_mps(cls,
+                          mps: MPS,
+                          max_bond_dim: int = -1,
+                          cutoff: float = 1E-12) -> "MPSWavefunction":
+        opts = {
+            'max_bond_dim': max_bond_dim,
+            'cutoff': cutoff
+        }
 
-        return cls(tensors=mps.tensors, opts=opts, dq=mps.dq,
-                   const=mps.const)
+        return cls(tensors=mps.tensors, opts=opts,
+                   dq=mps.dq, const=mps.const)
 
     def print_wfn(self) -> None:
         for ii, tensor in enumerate(self.tensors):

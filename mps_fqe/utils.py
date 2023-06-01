@@ -99,3 +99,44 @@ def three_body_projection_mpo(isite: int, jsite: int, ksite: int,
                               max_bond_dim=-1, const=0)
 
     return mpo.to_sparse()
+
+
+def apply_fiedler_ordering(h1, h2):
+    """Reorder orbitals using the Fiedler method."""
+
+    def fiedler_order(mat):
+        n = mat.shape[0]
+
+        # Laplacian matrix of the graph
+        lmat = numpy.zeros(mat.shape)
+        for i in range(n):
+            for j in range(n):
+                lmat[i, i] += abs(mat[i, j])
+                lmat[i, j] -= mat[i, j]
+
+        ee, ev = numpy.linalg.eigh(lmat)
+        assert abs(ee[0] < 1E-12)
+        factor = 1.0
+        for x in ev[1]:
+            if abs(x) > 1E-12:
+                factor = 1 if x > 0 else -1
+                break
+
+        sort_key = factor*ev[1]
+        order = list(range(n))
+        return sorted(order, key=lambda x: sort_key[x])
+
+    # use the K-matrix but break any unwanted symmetries
+    # by perturbing with h1
+    mat = 1E-6*h1 + numpy.einsum('ijji->ij', h2)
+    order = fiedler_order(mat)
+    # reorder indices
+    h1_new = h1[:, order]
+    h1_new = h1_new[order]
+
+    h2_new = h2[:, :, :, order]
+    h2_new = h2_new[:, :, order]
+    h2_new = h2_new[:, order]
+    h2_new = h2_new[order]
+
+    return h1_new, h2_new, order
