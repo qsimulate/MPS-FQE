@@ -46,11 +46,11 @@ def test_block2_rdm2(n_electrons, sz, n_orbitals):
                           atol=1E-12)
 
 
-@pytest.mark.parametrize("n_electrons,sz,n_orbitals", [(3, 1, 4),
-                                                       (6, -2, 4),
-                                                       (5, 1, 4),
-                                                       (6, 2, 4),
-                                                       (4, 0, 6)])
+@pytest.mark.parametrize("n_electrons,sz,n_orbitals",  [(3, 1, 4),
+                                                        (6, -2, 4),
+                                                        (5, 1, 4),
+                                                        (6, 2, 4),
+                                                        (4, 0, 6)])
 def test_block2_rdm3(n_electrons, sz, n_orbitals):
     fqe_wfn = fqe.Wavefunction([[n_electrons, sz, n_orbitals]])
     fqe_wfn.set_wfn(strategy='random')
