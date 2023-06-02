@@ -230,8 +230,6 @@ class MPSWavefunction(MPS):
         rank = len(string.split()) // 2
         if rank > 3:
             raise ValueError("RDM is only implemented up to 3 bodies.")
-        if brawfn is not None:
-            raise ValueError("Transition rdm is not implemented yet.")
         if len(string.split()) % 2 != 0:
             raise ValueError("RDM must have even number of operators.")
 
@@ -240,7 +238,7 @@ class MPSWavefunction(MPS):
             mpo = mpo_from_fqe_hamiltonian(
                 SparseHamiltonian(FermionOperator(string)),
                 n_sites=self.n_sites)
-            return self.expectationValue(mpo)
+            return self.expectationValue(mpo, brawfn)
 
         if block2:
             if brawfn is not None:
