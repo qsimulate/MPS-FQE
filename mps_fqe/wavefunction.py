@@ -228,3 +228,11 @@ class MPSWavefunction(MPS):
     def get_FCITensor(self) -> FlatSparseTensor:
         return functools.reduce(lambda x, y: np.tensordot(x, y, axes=1),
                                 self.tensors)
+
+    def scale(self, sval: complex) -> None:
+        """ Scale each configuration space by the value sval
+
+        Args:
+            sval (complex): value to scale by
+        """
+        self = sval*self
