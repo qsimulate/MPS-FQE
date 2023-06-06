@@ -192,7 +192,6 @@ class MPSWavefunction(MPS):
         mpe = CachedMPE(mps, hamiltonian, mps) if cached \
             else MPE(mps, hamiltonian, mps)
         bdim = mps.opts.get("max_bond_dim", -1)
-        print(bdim)
 
         mpe.tddmrg(bdims=[bdim], dt=-dt * 1j, iprint=0, n_sweeps=steps,
                    normalize=False, n_sub_sweeps=n_sub_sweeps)
