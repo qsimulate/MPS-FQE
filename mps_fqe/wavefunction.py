@@ -254,7 +254,7 @@ class MPSWavefunction(MPS):
         elif rank == 3:
             return self._get_rdm3(brawfn)
         else:
-            raise ValueError("RDM is only implemented up to 3 bodies.")
+            raise ValueError("RDM is only implemented up to 3pdm.")
 
     def _get_rdm1(self, brawfn):
         rdm1 = numpy.zeros((self.n_sites, self.n_sites), dtype=complex)
@@ -290,8 +290,8 @@ class MPSWavefunction(MPS):
                                                   self.n_sites)
             rdm3[isite, jsite, ksite, lsite, msite, nsite] = \
                 self.expectationValue(mpo, brawfn)
-        return rdm3        
-    
+        return rdm3
+
     def _block2_rdm(self, rank):
         with tempfile.TemporaryDirectory() as temp_dir:
             os.environ['TMPDIR'] = str(temp_dir)
