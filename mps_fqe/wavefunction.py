@@ -253,8 +253,7 @@ class MPSWavefunction(MPS):
             return self._get_rdm2(brawfn)
         elif rank == 3:
             return self._get_rdm3(brawfn)
-        else:
-            raise ValueError("RDM is only implemented up to 3pdm.")
+        raise ValueError("RDM is only implemented up to 3pdm.")
 
     def _get_rdm1(self, brawfn):
         rdm1 = numpy.zeros((self.n_sites, self.n_sites), dtype=complex)
@@ -293,6 +292,8 @@ class MPSWavefunction(MPS):
         return rdm3
 
     def _block2_rdm(self, rank):
+        if rank > 3:
+            raise ValueError("Only implemented up to 3pdm.")
         with tempfile.TemporaryDirectory() as temp_dir:
             os.environ['TMPDIR'] = str(temp_dir)
             driver = DMRGDriver(scratch=os.environ['TMPDIR'],
@@ -317,6 +318,4 @@ class MPSWavefunction(MPS):
                     + numpy.einsum("ijklmn->ijknlm", b2rdm[2]) \
                     + numpy.einsum("ijklmn->jiklnm", b2rdm[2]) \
                     + numpy.einsum("ijklmn->jkilmn", b2rdm[2])
-            else:
-                raise ValueError("Only implemented up to 3pdm.")
         return rdm
