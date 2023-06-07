@@ -1,5 +1,7 @@
+import os
 import functools
 import itertools
+import tempfile
 from typing import List, Union, Optional, Tuple
 
 import numpy
@@ -12,7 +14,8 @@ from pyblock3.algebra.mps import MPS
 from pyblock3.algebra.mpe import MPE, CachedMPE
 from pyblock3.algebra.integrate import rk4_apply
 from pyblock3.algebra.symmetry import SZ
-
+from pyblock3.block2.io import MPSTools
+from pyblock2.driver.core import DMRGDriver, SymmetryTypes
 from mps_fqe import utils
 from mps_fqe.hamiltonian import mpo_from_fqe_hamiltonian
 
@@ -37,6 +40,10 @@ class MPSWavefunction(MPS):
                               max_bond_dim: int = -1,
                               cutoff: float = 1E-12) \
             -> "MPSWavefunction":
+        opts = {
+            "max_bond_dim": max_bond_dim,
+            "cutoff": cutoff
+        }
         sectors = fqe_wfn.sectors()
 
         def get_fci_FlatSparseTensor(sectors):
@@ -97,7 +104,7 @@ class MPSWavefunction(MPS):
         fci_tensor = get_fci_FlatSparseTensor(sectors)
         tensors = decompose_mps(fci_tensor)
 
-        return cls(tensors=tensors)
+        return cls(tensors=tensors, opts=opts)
 
     def to_fqe_wavefunction(self,
                             broken: Optional[Union[List[str], str]] = None)\
@@ -222,54 +229,93 @@ class MPSWavefunction(MPS):
         return functools.reduce(lambda x, y: numpy.tensordot(x, y, axes=1),
                                 self.tensors)
 
-    def rdm(self, string: str, brawfn: Optional["MPSWavefunction"] = None
-            ) -> Union[complex, numpy.ndarray]:
-        rank = len(string.split()) // 2
-        if rank > 3:
-            raise ValueError("RDM is only implemented up to 3 bodies.")
-        if brawfn is not None:
-            raise ValueError("Transition rdm is not implemented yet.")
-        if len(string.split()) % 2 != 0:
-            raise ValueError("RDM must have even number of operators.")
-
+    def rdm(self, string: str, brawfn: Optional["MPSWavefunction"] = None,
+            block2: bool = False) -> Union[complex, numpy.ndarray]:
         # Get an individual rdm element
         if any(char.isdigit() for char in string):
             mpo = mpo_from_fqe_hamiltonian(
                 SparseHamiltonian(FermionOperator(string)),
                 n_sites=self.n_sites)
-            return self.expectationValue(mpo)
+            return self.expectationValue(mpo, brawfn)
 
+        rank = len(string.split()) // 2
+        if len(string.split()) % 2 != 0:
+            raise ValueError("RDM must have even number of operators.")
+        if block2:
+            if brawfn is not None:
+                raise ValueError("Transition density not implemented \
+                with block2 driver.")
+            return self._block2_rdm(rank)
         # Get the entire rdm
         if rank == 1:
-            rdm1 = numpy.zeros((self.n_sites, self.n_sites), dtype=complex)
-            for isite in range(self.n_sites):
-                for jsite in range(isite+1):
-                    rdm1[isite, jsite] = self.expectationValue(
-                        utils.one_body_projection_mpo(isite, jsite,
-                                                      self.n_sites))
-            return rdm1 + numpy.tril(rdm1, -1).transpose().conjugate()
+            return self._get_rdm1(brawfn)
+        elif rank == 2:
+            return self._get_rdm2(brawfn)
+        elif rank == 3:
+            return self._get_rdm3(brawfn)
+        raise ValueError("RDM is only implemented up to 3pdm.")
 
-        if rank == 2:
-            rdm2 = numpy.zeros((self.n_sites, self.n_sites,
-                                self.n_sites, self.n_sites), dtype=complex)
-            for isite, jsite, ksite, lsite in itertools.product(
-                    range(self.n_sites), repeat=4):
-                mpo = utils.two_body_projection_mpo(isite, jsite,
-                                                    ksite, lsite,
+    def _get_rdm1(self, brawfn):
+        rdm1 = numpy.zeros((self.n_sites, self.n_sites), dtype=complex)
+        for isite in range(self.n_sites):
+            for jsite in range(isite+1):
+                mpo = utils.one_body_projection_mpo(isite, jsite,
                                                     self.n_sites)
-                rdm2[isite, jsite, ksite, lsite] = self.expectationValue(mpo)
-            return rdm2
+                rdm1[isite, jsite] = self.expectationValue(mpo,
+                                                           brawfn=brawfn)
+        return rdm1 + numpy.tril(rdm1, -1).transpose().conjugate()
 
-        if rank == 3:
-            rdm3 = numpy.zeros((self.n_sites, self.n_sites,
-                                self.n_sites, self.n_sites,
-                                self.n_sites, self.n_sites), dtype=complex)
-            for isite, jsite, ksite, lsite, msite, nsite in itertools.product(
-                    range(self.n_sites), repeat=6):
-                mpo = utils.three_body_projection_mpo(isite, jsite,
-                                                      ksite, lsite,
-                                                      msite, nsite,
-                                                      self.n_sites)
-                rdm3[isite, jsite, ksite, lsite, msite, nsite] = \
-                    self.expectationValue(mpo)
-            return rdm3
+    def _get_rdm2(self, brawfn):
+        rdm2 = numpy.zeros((self.n_sites, self.n_sites,
+                            self.n_sites, self.n_sites), dtype=complex)
+        for isite, jsite, ksite, lsite in itertools.product(
+                range(self.n_sites), repeat=4):
+            mpo = utils.two_body_projection_mpo(isite, jsite,
+                                                ksite, lsite,
+                                                self.n_sites)
+            rdm2[isite, jsite, ksite, lsite] = \
+                self.expectationValue(mpo, brawfn)
+        return rdm2
+
+    def _get_rdm3(self, brawfn):
+        rdm3 = numpy.zeros((self.n_sites, self.n_sites,
+                            self.n_sites, self.n_sites,
+                            self.n_sites, self.n_sites), dtype=complex)
+        for isite, jsite, ksite, lsite, msite, nsite in itertools.product(
+                range(self.n_sites), repeat=6):
+            mpo = utils.three_body_projection_mpo(isite, jsite,
+                                                  ksite, lsite,
+                                                  msite, nsite,
+                                                  self.n_sites)
+            rdm3[isite, jsite, ksite, lsite, msite, nsite] = \
+                self.expectationValue(mpo, brawfn)
+        return rdm3
+
+    def _block2_rdm(self, rank):
+        if rank > 3:
+            raise ValueError("Only implemented up to 3pdm.")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            os.environ['TMPDIR'] = str(temp_dir)
+            driver = DMRGDriver(scratch=os.environ['TMPDIR'],
+                                symm_type=SymmetryTypes.SZ | SymmetryTypes.CPX,
+                                n_threads=1)
+            driver.initialize_system(n_sites=self.n_sites,
+                                     orb_sym=[0]*self.n_sites)
+            b2mps = MPSTools.to_block2(self, save_dir=driver.scratch)
+            if rank == 1:
+                rdm = numpy.sum(driver.get_1pdm(b2mps), axis=0)
+            elif rank == 2:
+                b2rdm = driver.get_2pdm(b2mps)
+                rdm = b2rdm[0] + b2rdm[2] \
+                    - (numpy.einsum("ijlk", b2rdm[1])
+                       + numpy.einsum("jikl", b2rdm[1]))
+            elif rank == 3:
+                b2rdm = driver.get_3pdm(b2mps)
+                rdm = b2rdm[0] + b2rdm[3] \
+                    + numpy.einsum("ijklmn->ijkmnl", b2rdm[1]) \
+                    + numpy.einsum("ijklmn->ikjmln", b2rdm[1]) \
+                    + numpy.einsum("ijklmn->kijlmn", b2rdm[1]) \
+                    + numpy.einsum("ijklmn->ijknlm", b2rdm[2]) \
+                    + numpy.einsum("ijklmn->jiklnm", b2rdm[2]) \
+                    + numpy.einsum("ijklmn->jkilmn", b2rdm[2])
+        return rdm

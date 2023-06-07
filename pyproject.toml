@@ -36,6 +36,7 @@ filterwarnings = ["ignore:Please Use `OptimizeResult`.*:DeprecationWarning"]
 [[tool.mypy.overrides]]
 module = [
     "fqe.*",
+    "pyblock2.*",    
     "pyblock3.*",
     "openfermion.*",
     "openfermionpyscf",
