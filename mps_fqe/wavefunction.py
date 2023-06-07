@@ -239,7 +239,8 @@ class MPSWavefunction(MPS):
         Args:
             sval (complex): value to scale by
         """
-        self = sval*self
+        # TODO: make sure this is legit
+        self.tensors[0] = sval*self.tensors[0]
 
     def rdm(self, string: str, brawfn: Optional["MPSWavefunction"] = None
             ) -> Union[complex, numpy.ndarray]:
