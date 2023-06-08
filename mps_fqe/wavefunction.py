@@ -178,8 +178,8 @@ class MPSWavefunction(MPS):
                              + ' provided {}'.format(hamiltonian.n_sites))
         mps = self.copy()
         mps = hamiltonian @ mps
-        # In some cases, applying an MPO returns an integer zero. In most
-        # cases it would be easier if this could always return an MPS.
+        # In some cases, applying an MPO returns an integer zero. It would
+        # be easier if this could always return an MPSWavefunction.
         if isinstance(mps, int):
             assert mps == 0
             return 0
@@ -230,11 +230,10 @@ class MPSWavefunction(MPS):
             return self.tddmrg(time, hamiltonian, steps,
                                n_sub_sweeps=n_sub_sweeps,
                                cached=cached)
-        elif method.lower() == "rk4":
+        if method.lower() == "rk4":
             return self.rk4_apply(time, hamiltonian, steps)
-        else:
-            raise ValueError(f"method needs to be 'tddmrg' or\
-'rk4', '{method}' given")
+        raise ValueError(
+            f"method needs to be 'tddmrg' or 'rk4', '{method}' given")
 
     def expectationValue(self, hamiltonian: MPS,
                          brawfn: Optional["MPSWavefunction"] = None) -> float:
@@ -251,7 +250,6 @@ class MPSWavefunction(MPS):
         Args:
             sval (complex): value to scale by
         """
-        # TODO: make sure this is legit
         self.tensors[0] = sval*self.tensors[0]
 
     def rdm(self, string: str, brawfn: Optional["MPSWavefunction"] = None,
@@ -274,9 +272,9 @@ class MPSWavefunction(MPS):
         # Get the entire rdm
         if rank == 1:
             return self._get_rdm1(brawfn)
-        elif rank == 2:
+        if rank == 2:
             return self._get_rdm2(brawfn)
-        elif rank == 3:
+        if rank == 3:
             return self._get_rdm3(brawfn)
         raise ValueError("RDM is only implemented up to 3pdm.")
 
