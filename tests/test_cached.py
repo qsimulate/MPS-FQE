@@ -29,14 +29,15 @@ def test_propagation():
 
     mpo = mpo_from_fqe_hamiltonian(fqe_ham=hamiltonian)
     mps = MPSWavefunction.from_fqe_wavefunction(fqe_wfn, max_bond_dim=mbd)
-    mps_evolved = mps.time_evolve(1, mpo, steps=10, method="tddmrg", cached=False)
+    mps_evolved = mps.time_evolve(
+        1, mpo, steps=10, method="tddmrg", cached=False)
     ref = mps_evolved.expectationValue(mpo)
     mps_cached = MPSWavefunction.from_fqe_wavefunction(fqe_wfn,
                                                        max_bond_dim=mbd)
     with tempfile.TemporaryDirectory() as temp_dir:
         os.environ['TMPDIR'] = str(temp_dir)
-        mps_cached_evolved = mps_cached.time_evolve(1, mpo, steps=10,
-                                                    method="tddmrg", cached=True)
+        mps_cached_evolved = mps_cached.time_evolve(
+            1, mpo, steps=10, method="tddmrg", cached=True)
         out = mps_cached_evolved.expectationValue(mpo)
 
     assert numpy.isclose(ref, out)
