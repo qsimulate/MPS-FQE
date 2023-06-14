@@ -176,8 +176,10 @@ class MPSWavefunction(MPS):
             raise ValueError('Hamiltonian has incorrect size:'
                              + ' expected {}'.format(self.n_sites)
                              + ' provided {}'.format(hamiltonian.n_sites))
+
         mps = self.copy()
-        mps = hamiltonian @ mps
+        mps = hamiltonian @ mps + 0*mps
+
         # In some cases, applying an MPO returns an integer zero. It would
         # be easier if this could always return an MPSWavefunction.
         if isinstance(mps, int):
@@ -194,16 +196,15 @@ class MPSWavefunction(MPS):
                cached: bool = False):
         dt = time / steps
         mps = self.copy()
+
         mpe = CachedMPE(mps, hamiltonian, mps) if cached \
             else MPE(mps, hamiltonian, mps)
         bdim = mps.opts.get("max_bond_dim", -1)
 
-        try:
-            mpe.tddmrg(bdims=[bdim], dt=-dt * 1j, iprint=0, n_sweeps=steps,
-                       normalize=False, n_sub_sweeps=n_sub_sweeps)
-        except RuntimeError:
-            pass
+        mpe.tddmrg(bdims=[bdim], dt=-dt * 1j, iprint=0, n_sweeps=steps,
+                   normalize=False, n_sub_sweeps=n_sub_sweeps, cutoff=0)
 
+        mps += 0*self
         return type(self)(tensors=mps.tensors, opts=mps.opts)
 
     def rk4_apply(self, time: float, hamiltonian: MPS,
