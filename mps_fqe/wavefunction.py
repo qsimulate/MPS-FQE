@@ -364,4 +364,5 @@ def get_hf_mps(nele, sz, norbs, bdim, e0=0, cutoff=0.0, full=True):
             hamil.n_sites, hamil.vacuum, hamil.target, hamil.basis)
         mps_info_full.set_bond_dimension(bdim)
         mps_wfn += 0*MPS.ones(mps_info_full)
-    return MPSWavefunction.from_pyblock3_mps(mps_wfn, max_bond_dim=bdim, cutoff=cutoff)
+    return MPSWavefunction.from_pyblock3_mps(mps_wfn, max_bond_dim=bdim,
+                                             cutoff=cutoff)

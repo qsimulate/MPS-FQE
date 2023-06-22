@@ -48,7 +48,7 @@ def test_H_ring_evolve(amount_H, method):
     e_0 = molecule.nuclear_repulsion
     hamiltonian = fqe.get_restricted_hamiltonian((h1,
                                                   np.einsum("ijlk",
-                                                               -0.5 * h2)),
+                                                            -0.5 * h2)),
                                                  e_0=e_0)
     assert np.isclose(molecule.hf_energy, fqe_wf.expectationValue(hamiltonian))
 
