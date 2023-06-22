@@ -10,11 +10,13 @@ from fqe.hamiltonians.hamiltonian import Hamiltonian as FqeHamiltonian
 from fqe.hamiltonians.sparse_hamiltonian import SparseHamiltonian
 from openfermion import FermionOperator
 from pyblock3.algebra.flat import FlatSparseTensor
-from pyblock3.algebra.mps import MPS
+from pyblock3.algebra.mps import MPS, MPSInfo
 from pyblock3.algebra.mpe import MPE, CachedMPE
 from pyblock3.algebra.integrate import rk4_apply
 from pyblock3.algebra.symmetry import SZ
 from pyblock3.block2.io import MPSTools
+from pyblock3.fcidump import FCIDUMP
+from pyblock3.hamiltonian import Hamiltonian
 from pyblock2.driver.core import DMRGDriver, SymmetryTypes
 from mps_fqe import utils
 from mps_fqe.hamiltonian import mpo_from_fqe_hamiltonian
@@ -167,8 +169,8 @@ class MPSWavefunction(MPS):
 
         return self.from_pyblock3_mps(mps), merror
 
-    def apply(self,
-              hamiltonian: Union[FqeHamiltonian, MPS]) -> "MPSWavefunction":
+    def apply(self, hamiltonian: Union[FqeHamiltonian, MPS])\
+            -> "MPSWavefunction":
         if isinstance(hamiltonian, FqeHamiltonian):
             hamiltonian = mpo_from_fqe_hamiltonian(hamiltonian,
                                                    n_sites=self.n_sites)
@@ -176,8 +178,15 @@ class MPSWavefunction(MPS):
             raise ValueError('Hamiltonian has incorrect size:'
                              + ' expected {}'.format(self.n_sites)
                              + ' provided {}'.format(hamiltonian.n_sites))
+
         mps = self.copy()
-        mps = hamiltonian @ mps
+        mps = hamiltonian @ mps + 0*mps
+
+        # It may still be possible to get an integer zero here.
+        # For now, we raise a RuntimeError
+        if isinstance(mps, int):
+            assert mps == 0
+            raise RuntimeError("Integer zero obtained when applying MPO")
 
         return type(self)(tensors=mps.tensors, opts=mps.opts)
 
@@ -189,13 +198,15 @@ class MPSWavefunction(MPS):
                cached: bool = False):
         dt = time / steps
         mps = self.copy()
+
         mpe = CachedMPE(mps, hamiltonian, mps) if cached \
             else MPE(mps, hamiltonian, mps)
         bdim = mps.opts.get("max_bond_dim", -1)
 
         mpe.tddmrg(bdims=[bdim], dt=-dt * 1j, iprint=0, n_sweeps=steps,
-                   normalize=False, n_sub_sweeps=n_sub_sweeps)
+                   normalize=False, n_sub_sweeps=n_sub_sweeps, cutoff=0)
 
+        mps += 0*self
         return type(self)(tensors=mps.tensors, opts=mps.opts)
 
     def rk4_apply(self, time: float, hamiltonian: MPS,
@@ -208,17 +219,24 @@ class MPSWavefunction(MPS):
 
         return type(self)(tensors=mps.tensors, opts=mps.opts)
 
-    def time_evolve(self, time: float, hamiltonian: MPS,
+    def time_evolve(self, time: float,
+                    hamiltonian: Union[FqeHamiltonian, MPS],
+                    inplace: bool = False,
                     steps: int = 1,
+                    n_sub_sweeps: int = 1,
                     method: str = "tddmrg",
                     cached: bool = False) -> "MPSWavefunction":
+        if isinstance(hamiltonian, FqeHamiltonian):
+            hamiltonian = mpo_from_fqe_hamiltonian(hamiltonian,
+                                                   n_sites=self.n_sites)
         if method.lower() == "tddmrg":
-            return self.tddmrg(time, hamiltonian, steps, cached=cached)
-        elif method.lower() == "rk4":
+            return self.tddmrg(time, hamiltonian, steps,
+                               n_sub_sweeps=n_sub_sweeps,
+                               cached=cached)
+        if method.lower() == "rk4":
             return self.rk4_apply(time, hamiltonian, steps)
-        else:
-            raise ValueError(f"method needs to be 'tddmrg' or\
-'rk4', '{method}' given")
+        raise ValueError(
+            f"method needs to be 'tddmrg' or 'rk4', '{method}' given")
 
     def expectationValue(self, hamiltonian: MPS,
                          brawfn: Optional["MPSWavefunction"] = None) -> float:
@@ -228,6 +246,14 @@ class MPSWavefunction(MPS):
     def get_FCITensor(self) -> FlatSparseTensor:
         return functools.reduce(lambda x, y: numpy.tensordot(x, y, axes=1),
                                 self.tensors)
+
+    def scale(self, sval: complex) -> None:
+        """ Scale each configuration space by the value sval
+
+        Args:
+            sval (complex): value to scale by
+        """
+        self.tensors[0] = sval*self.tensors[0]
 
     def rdm(self, string: str, brawfn: Optional["MPSWavefunction"] = None,
             block2: bool = False) -> Union[complex, numpy.ndarray]:
@@ -249,9 +275,9 @@ class MPSWavefunction(MPS):
         # Get the entire rdm
         if rank == 1:
             return self._get_rdm1(brawfn)
-        elif rank == 2:
+        if rank == 2:
             return self._get_rdm2(brawfn)
-        elif rank == 3:
+        if rank == 3:
             return self._get_rdm3(brawfn)
         raise ValueError("RDM is only implemented up to 3pdm.")
 
@@ -319,3 +345,24 @@ class MPSWavefunction(MPS):
                     + numpy.einsum("ijklmn->jiklnm", b2rdm[2]) \
                     + numpy.einsum("ijklmn->jkilmn", b2rdm[2])
         return rdm
+
+
+def get_hf_mps(nele, sz, norbs, bdim, e0=0, cutoff=0.0, full=True):
+    fd = FCIDUMP(pg='c1',
+                 n_sites=norbs,
+                 const_e=e0,
+                 n_elec=nele,
+                 twos=sz)
+    assert sz == 0
+    occ = [2 if i < nele//2 else 0 for i in range(norbs)]
+    hamil = Hamiltonian(fd, flat=True)
+    mps_info = MPSInfo(hamil.n_sites, hamil.vacuum, hamil.target, hamil.basis)
+    mps_info.set_bond_dimension_occ(bdim, occ=occ)
+    mps_wfn = MPS.ones(mps_info)
+    if full:
+        mps_info_full = MPSInfo(
+            hamil.n_sites, hamil.vacuum, hamil.target, hamil.basis)
+        mps_info_full.set_bond_dimension(bdim)
+        mps_wfn += 0*MPS.ones(mps_info_full)
+    return MPSWavefunction.from_pyblock3_mps(mps_wfn, max_bond_dim=bdim,
+                                             cutoff=cutoff)

@@ -1,10 +1,9 @@
-import os
-import numpy as np
-import fqe
-import numpy
-import pytest
 import itertools
+import os
+import fqe
+import numpy as np
 from openfermion.chem import make_atomic_ring
+import pytest
 
 from mps_fqe.wavefunction import MPSWavefunction
 from mps_fqe.hamiltonian import mpo_from_fqe_hamiltonian
@@ -48,8 +47,8 @@ def test_H_ring_evolve(amount_H, method):
 
     e_0 = molecule.nuclear_repulsion
     hamiltonian = fqe.get_restricted_hamiltonian((h1,
-                                                  numpy.einsum("ijlk",
-                                                               -0.5 * h2)),
+                                                  np.einsum("ijlk",
+                                                            -0.5 * h2)),
                                                  e_0=e_0)
     assert np.isclose(molecule.hf_energy, fqe_wf.expectationValue(hamiltonian))
 
@@ -60,7 +59,7 @@ def test_H_ring_evolve(amount_H, method):
     bdim = 4 ** ((amount_H + 1) // 2)
 
     evolved = fqe_wf.time_evolve(mini_steps * mini_dt, hamiltonian)
-    for i in range(steps):
+    for _ in range(steps):
         evolved = evolved.time_evolve(dt, hamiltonian)
     assert np.isclose(molecule.hf_energy,
                       evolved.expectationValue(hamiltonian))
