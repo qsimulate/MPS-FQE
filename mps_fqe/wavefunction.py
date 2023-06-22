@@ -170,7 +170,7 @@ class MPSWavefunction(MPS):
         return self.from_pyblock3_mps(mps), merror
 
     def apply(self, hamiltonian: Union[FqeHamiltonian, MPS])\
-            -> Union["MPSWavefunction", int]:
+            -> "MPSWavefunction":
         if isinstance(hamiltonian, FqeHamiltonian):
             hamiltonian = mpo_from_fqe_hamiltonian(hamiltonian,
                                                    n_sites=self.n_sites)
@@ -182,11 +182,11 @@ class MPSWavefunction(MPS):
         mps = self.copy()
         mps = hamiltonian @ mps + 0*mps
 
-        # In some cases, applying an MPO returns an integer zero. It would
-        # be easier if this could always return an MPSWavefunction.
+        # It may still be possible to get an integer zero here.
+        # For now, we raise a RuntimeError
         if isinstance(mps, int):
             assert mps == 0
-            return 0
+            raise RuntimeError("Integer zero obtained when applying MPO")
 
         return type(self)(tensors=mps.tensors, opts=mps.opts)
 
