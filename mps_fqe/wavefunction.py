@@ -10,11 +10,13 @@ from fqe.hamiltonians.hamiltonian import Hamiltonian as FqeHamiltonian
 from fqe.hamiltonians.sparse_hamiltonian import SparseHamiltonian
 from openfermion import FermionOperator
 from pyblock3.algebra.flat import FlatSparseTensor
-from pyblock3.algebra.mps import MPS
+from pyblock3.algebra.mps import MPS, MPSInfo
 from pyblock3.algebra.mpe import MPE, CachedMPE
 from pyblock3.algebra.integrate import rk4_apply
 from pyblock3.algebra.symmetry import SZ
 from pyblock3.block2.io import MPSTools
+from pyblock3.fcidump import FCIDUMP
+from pyblock3.hamiltonian import Hamiltonian
 from pyblock2.driver.core import DMRGDriver, SymmetryTypes
 from mps_fqe import utils
 from mps_fqe.hamiltonian import mpo_from_fqe_hamiltonian
@@ -343,3 +345,23 @@ class MPSWavefunction(MPS):
                     + numpy.einsum("ijklmn->jiklnm", b2rdm[2]) \
                     + numpy.einsum("ijklmn->jkilmn", b2rdm[2])
         return rdm
+
+
+def get_hf_mps(nele, sz, norbs, bdim, e0=0, cutoff=0.0, full=True):
+    fd = FCIDUMP(pg='c1',
+                 n_sites=norbs,
+                 const_e=e0,
+                 n_elec=nele,
+                 twos=sz)
+    assert sz == 0
+    occ = [2 if i < nele//2 else 0 for i in range(norbs)]
+    hamil = Hamiltonian(fd, flat=True)
+    mps_info = MPSInfo(hamil.n_sites, hamil.vacuum, hamil.target, hamil.basis)
+    mps_info.set_bond_dimension_occ(bdim, occ=occ)
+    mps_wfn = MPS.ones(mps_info)
+    if full:
+        mps_info_full = MPSInfo(
+            hamil.n_sites, hamil.vacuum, hamil.target, hamil.basis)
+        mps_info_full.set_bond_dimension(bdim)
+        mps_wfn += 0*MPS.ones(mps_info_full)
+    return MPSWavefunction.from_pyblock3_mps(mps_wfn, max_bond_dim=bdim, cutoff=cutoff)
