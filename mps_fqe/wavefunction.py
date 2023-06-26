@@ -178,7 +178,7 @@ class MPSWavefunction(MPS):
             raise ValueError('Hamiltonian has incorrect size:'
                              + ' expected {}'.format(self.n_sites)
                              + ' provided {}'.format(hamiltonian.n_sites))
-
+        print("Apply...")
         mps = self.copy()
         mps = hamiltonian @ mps + 0*mps
 
@@ -353,8 +353,10 @@ def get_hf_mps(nele, sz, norbs, bdim, e0=0, cutoff=0.0, full=True):
                  const_e=e0,
                  n_elec=nele,
                  twos=sz)
-    assert sz == 0
-    occ = [2 if i < nele//2 else 0 for i in range(norbs)]
+    nsocc = abs(sz)
+    ndocc = (nele - nsocc) // 2
+    nvirt = norbs - nsocc - ndocc
+    occ = [2 for _ in range(ndocc)] + [1 for _ in range(nsocc)] + [0 for _ in range(nvirt)]
     hamil = Hamiltonian(fd, flat=True)
     mps_info = MPSInfo(hamil.n_sites, hamil.vacuum, hamil.target, hamil.basis)
     mps_info.set_bond_dimension_occ(bdim, occ=occ)
