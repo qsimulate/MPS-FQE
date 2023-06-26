@@ -356,7 +356,7 @@ def get_hf_mps(nele, sz, norbs, bdim, e0=0, cutoff=0.0, full=True):
     nsocc = abs(sz)
     ndocc = (nele - nsocc) // 2
     nvirt = norbs - nsocc - ndocc
-    occ = [2 for _ in range(ndocc)] + [1 for _ in range(nsocc)] + [0 for _ in range(nvirt)]
+    occ = [2]*ndocc + [1]*nsocc + [0]*nvirt
     hamil = Hamiltonian(fd, flat=True)
     mps_info = MPSInfo(hamil.n_sites, hamil.vacuum, hamil.target, hamil.basis)
     mps_info.set_bond_dimension_occ(bdim, occ=occ)
