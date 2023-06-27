@@ -1,9 +1,9 @@
-import numpy
 from typing import Optional
 
 from fqe.hamiltonians.hamiltonian import Hamiltonian as FqeHamiltonian
 from fqe.hamiltonians import diagonal_coulomb, diagonal_hamiltonian, \
     restricted_hamiltonian, sparse_hamiltonian
+import numpy
 
 from pyblock3.hamiltonian import Hamiltonian
 from pyblock3.fcidump import FCIDUMP
@@ -27,8 +27,7 @@ def mpo_from_fqe_hamiltonian(fqe_ham: FqeHamiltonian,
     if n_sites is None:
         if isinstance(fqe_ham, sparse_hamiltonian.SparseHamiltonian):
             raise ValueError("Must provide n_sites for sparse Hamiltonian")
-        else:
-            n_sites = fqe_ham.dim()
+        n_sites = fqe_ham.dim()
 
     fd = FCIDUMP(pg=pg,
                  n_sites=n_sites,

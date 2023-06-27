@@ -178,7 +178,6 @@ class MPSWavefunction(MPS):
             raise ValueError('Hamiltonian has incorrect size:'
                              + ' expected {}'.format(self.n_sites)
                              + ' provided {}'.format(hamiltonian.n_sites))
-        print("Apply...")
         mps = self.copy()
         mps = hamiltonian @ mps + 0*mps
 
