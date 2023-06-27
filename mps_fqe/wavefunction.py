@@ -347,6 +347,13 @@ class MPSWavefunction(MPS):
 
 
 def get_hf_mps(nele, sz, norbs, bdim, e0=0, cutoff=0.0, full=True):
+    if nele > 2*norbs:
+        raise ValueError(
+            f"Electron number is too large (nele = {nele}, norb = {norbs})")
+    if sz % 2 != nele % 2:
+        raise ValueError(
+            f"Spin (sz = {sz}) is incompatible with nele = {nele}")
+
     fd = FCIDUMP(pg='c1',
                  n_sites=norbs,
                  const_e=e0,
@@ -355,6 +362,7 @@ def get_hf_mps(nele, sz, norbs, bdim, e0=0, cutoff=0.0, full=True):
     nsocc = abs(sz)
     ndocc = (nele - nsocc) // 2
     nvirt = norbs - nsocc - ndocc
+    assert nvirt >= 0
     occ = [2]*ndocc + [1]*nsocc + [0]*nvirt
     hamil = Hamiltonian(fd, flat=True)
     mps_info = MPSInfo(hamil.n_sites, hamil.vacuum, hamil.target, hamil.basis)
