@@ -5,7 +5,7 @@ import numpy as np
 from openfermion.chem import make_atomic_ring
 import pytest
 
-from mps_fqe.wavefunction import MPSWavefunction
+from mps_fqe.wavefunction import MPSWavefunction, get_hf_mps
 from mps_fqe.hamiltonian import mpo_from_fqe_hamiltonian
 
 
@@ -54,33 +54,35 @@ def test_H_ring_evolve(amount_H, method):
 
     dt = 0.1
     steps = 10
-    mini_dt = 0.0001
-    mini_steps = 10
+    total_time = dt*steps
+    tddmrg_steps = 10
+    sub_sweeps = 2
+    rk4_steps = 30
     bdim = 4 ** ((amount_H + 1) // 2)
 
-    evolved = fqe_wf.time_evolve(mini_steps * mini_dt, hamiltonian)
+    evolved = fqe_wf
     for _ in range(steps):
         evolved = evolved.time_evolve(dt, hamiltonian)
     assert np.isclose(molecule.hf_energy,
                       evolved.expectationValue(hamiltonian))
 
-    MPO = mpo_from_fqe_hamiltonian(fqe_ham=hamiltonian)
-    mps = MPSWavefunction.from_fqe_wavefunction(fqe_wf, max_bond_dim=bdim)\
-                         .time_evolve(mini_dt * mini_steps,
-                                      MPO,
-                                      steps=mini_steps,
-                                      method="rk4")
-    assert np.isclose(molecule.hf_energy, mps.expectationValue(MPO))
+    mpo = mpo_from_fqe_hamiltonian(fqe_ham=hamiltonian)
+    mps = get_hf_mps(nele, sz, norbs, bdim=bdim)
+    assert np.isclose(molecule.hf_energy, mps.expectationValue(mpo))
 
     mps_evolved = MPSWavefunction.from_fqe_wavefunction(evolved)
-    assert np.isclose(molecule.hf_energy, mps_evolved.expectationValue(MPO))
+    assert np.isclose(molecule.hf_energy, mps_evolved.expectationValue(mpo))
 
-    mps_evolved_2 = mps.time_evolve(dt * steps, MPO,
-                                    steps=steps, method=method)
-    mps_evolved_2 /= mps_evolved_2.norm()
-    mps_evolved_2 = MPSWavefunction(tensors=mps_evolved_2.tensors)
+    if method == 'tddmrg':
+        mps_evolved_2 = mps.time_evolve(
+            total_time, mpo, steps=tddmrg_steps,
+            method=method, n_sub_sweeps=sub_sweeps)
+    else:
+        assert method == 'rk4'
+        mps_evolved_2 = mps.time_evolve(
+            total_time, mpo, steps=rk4_steps, method=method)
 
-    assert np.isclose(molecule.hf_energy, mps_evolved_2.expectationValue(MPO))
+    assert np.isclose(molecule.hf_energy, mps_evolved_2.expectationValue(mpo))
     global_phase_shift = mps_evolved_2.conj() @ mps_evolved
     assert np.isclose(np.abs(global_phase_shift), 1.0)
 
