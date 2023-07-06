@@ -203,10 +203,10 @@ class MPSWavefunction(MPS):
         bdim = mps.opts.get("max_bond_dim", -1)
 
         mpe.tddmrg(bdims=[bdim], dt=-dt * 1j, iprint=0, n_sweeps=steps,
-                   normalize=False, n_sub_sweeps=n_sub_sweeps, cutoff=0)
+                   normalize=True, n_sub_sweeps=n_sub_sweeps, cutoff=1E-14)
 
         mps += 0*self
-        return type(self)(tensors=mps.tensors, opts=mps.opts)
+        return type(self)(tensors=mps.tensors, opts=self.opts)
 
     def rk4_apply(self, time: float, hamiltonian: MPS,
                   steps: int = 1) -> "MPSWavefunction":
