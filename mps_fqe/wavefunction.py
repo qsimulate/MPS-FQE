@@ -194,7 +194,7 @@ class MPSWavefunction(MPS):
 
     def tddmrg(self, time: float, hamiltonian: MPS,
                steps: int = 1, n_sub_sweeps: int = 1,
-               cached: bool = False):
+               cached: bool = False, cutoff: float = 1E-14):
         dt = time / steps
         mps = self.copy()
 
@@ -203,7 +203,7 @@ class MPSWavefunction(MPS):
         bdim = mps.opts.get("max_bond_dim", -1)
 
         mpe.tddmrg(bdims=[bdim], dt=-dt * 1j, iprint=0, n_sweeps=steps,
-                   normalize=True, n_sub_sweeps=n_sub_sweeps, cutoff=1E-14)
+                   normalize=True, n_sub_sweeps=n_sub_sweeps, cutoff=cutoff)
 
         mps += 0*self
         return type(self)(tensors=mps.tensors, opts=self.opts)
@@ -224,14 +224,15 @@ class MPSWavefunction(MPS):
                     steps: int = 1,
                     n_sub_sweeps: int = 1,
                     method: str = "tddmrg",
-                    cached: bool = False) -> "MPSWavefunction":
+                    cached: bool = False,
+                    cutoff: float = 1E-14) -> "MPSWavefunction":
         if isinstance(hamiltonian, FqeHamiltonian):
             hamiltonian = mpo_from_fqe_hamiltonian(hamiltonian,
                                                    n_sites=self.n_sites)
         if method.lower() == "tddmrg":
             return self.tddmrg(time, hamiltonian, steps,
                                n_sub_sweeps=n_sub_sweeps,
-                               cached=cached)
+                               cached=cached, cutoff=cutoff)
         if method.lower() == "rk4":
             return self.rk4_apply(time, hamiltonian, steps)
         raise ValueError(
