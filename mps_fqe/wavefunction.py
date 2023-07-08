@@ -169,17 +169,19 @@ class MPSWavefunction(MPS):
 
         return self.from_pyblock3_mps(mps), merror
 
-    def apply(self, hamiltonian: Union[FqeHamiltonian, MPS])\
-            -> "MPSWavefunction":
-        if isinstance(hamiltonian, FqeHamiltonian):
-            hamiltonian = mpo_from_fqe_hamiltonian(hamiltonian,
-                                                   n_sites=self.n_sites)
-        if hamiltonian.n_sites != self.n_sites:
-            raise ValueError('Hamiltonian has incorrect size:'
-                             + ' expected {}'.format(self.n_sites)
-                             + ' provided {}'.format(hamiltonian.n_sites))
+    def apply_linear(self, mpo: MPS) -> "MPSWavefunction":
+        bra = self.copy()
         mps = self.copy()
-        mps = hamiltonian @ mps + 0*mps
+        bdim = self.opts['max_bond_dim']
+        MPE(bra, mpo - mpo.const, mps).linear(
+            bdims=[bdim, bdim], noises=[1e-2, 1e-4, 1e-6, 0.0],
+            cg_thrds=None, iprint=0, n_sweeps=20, tol=0)
+        bra += mpo.const*mps
+        return type(self)(tensors=bra.tensors, opts=self.opts)
+
+    def apply_exact(self, mpo: MPS) -> "MPSWavefunction":
+        mps = self.copy()
+        mps = mpo @ mps + 0*mps
 
         # It may still be possible to get an integer zero here.
         # For now, we raise a RuntimeError
@@ -188,6 +190,20 @@ class MPSWavefunction(MPS):
             raise RuntimeError("Integer zero obtained when applying MPO")
 
         return type(self)(tensors=mps.tensors, opts=mps.opts)
+
+    def apply(self, hamiltonian: Union[FqeHamiltonian, MPS], exact=True)\
+            -> "MPSWavefunction":
+        if isinstance(hamiltonian, FqeHamiltonian):
+            hamiltonian = mpo_from_fqe_hamiltonian(hamiltonian,
+                                                   n_sites=self.n_sites)
+        if hamiltonian.n_sites != self.n_sites:
+            raise ValueError('Hamiltonian has incorrect size:'
+                             + ' expected {}'.format(self.n_sites)
+                             + ' provided {}'.format(hamiltonian.n_sites))
+
+        if exact:
+            return self.apply_exact(hamiltonian)
+        return self.apply_linear(hamiltonian)
 
     def transform(self):
         pass
