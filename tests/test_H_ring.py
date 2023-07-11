@@ -42,7 +42,7 @@ def hamiltonian_from_molecule(molecule):
 
 
 @pytest.mark.parametrize("amount_H,method",
-                         itertools.product(range(2, 9), ["rk4", "tddmrg"]))
+                         itertools.product(range(2, 7), ["rk4-linear", "rk4", "tddmrg"]))
 def test_H_ring_evolve(amount_H, method):
     molecule = get_H_ring_data(amount_H)
 
@@ -87,10 +87,14 @@ def test_H_ring_evolve(amount_H, method):
         mps_evolved_2 = mps.time_evolve(
             total_time, mpo, steps=tddmrg_steps,
             method=method, n_sub_sweeps=sub_sweeps)
-    else:
-        assert method == 'rk4'
+    elif method == 'rk4':
         mps_evolved_2 = mps.time_evolve(
             total_time, mpo, steps=rk4_steps, method=method)
+    else:
+        assert method == 'rk4-linear'
+        mps_evolved_2 = mps.time_evolve(
+            total_time, mpo, steps=rk4_steps,
+            n_sub_sweeps=sub_sweeps, method=method)
 
     assert np.isclose(molecule.hf_energy, mps_evolved_2.expectationValue(mpo))
     global_phase_shift = mps_evolved_2.conj() @ mps_evolved

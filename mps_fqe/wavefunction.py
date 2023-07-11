@@ -169,13 +169,21 @@ class MPSWavefunction(MPS):
 
         return self.from_pyblock3_mps(mps), merror
 
-    def apply_linear(self, mpo: MPS) -> "MPSWavefunction":
+    def apply_linear(self, mpo: MPS, n_sweeps: int = 4) -> "MPSWavefunction":
         bra = self.copy()
         mps = self.copy()
         bdim = self.opts['max_bond_dim']
+        if n_sweeps == 1:
+            noises = [0.0]
+        elif n_sweeps == 2:
+            noises = [1e-4, 0.0]
+        else:
+            noises = [1e-2, 1e-4, 0.0]
+        bdims = [bdim]*len(noises)
+
         MPE(bra, mpo - mpo.const, mps).linear(
-            bdims=[bdim, bdim], noises=[1e-2, 1e-4, 1e-6, 0.0],
-            cg_thrds=None, iprint=0, n_sweeps=20, tol=0)
+            bdims=bdims, noises=noises,
+            cg_thrds=None, iprint=0, n_sweeps=n_sweeps, tol=0)
         bra += mpo.const*mps
         return type(self)(tensors=bra.tensors, opts=self.opts)
 
@@ -234,6 +242,31 @@ class MPSWavefunction(MPS):
 
         return type(self)(tensors=mps.tensors, opts=mps.opts)
 
+    def rk4_apply_linear(self, time: float, hamiltonian: MPS,
+                         steps: int = 1, n_sub_sweeps: int = 1):
+        dt = -1.j * time / steps
+        tmp = self.copy()
+        mps = type(self)(tensors=tmp.tensors, opts=self.opts)
+        for ii in range(steps):
+            k1 = dt * mps.apply_linear(hamiltonian, n_sweeps=n_sub_sweeps)
+
+            k2 = 0.5 * k1 + mps
+            k2 = type(self)(tensors=k2.tensors, opts=mps.opts)
+            k2 = dt * k2.apply_linear(hamiltonian, n_sweeps=n_sub_sweeps)
+
+            k3 = 0.5 * k2 + mps
+            k3 = type(self)(tensors=k3.tensors, opts=mps.opts)
+            k3 = dt * k3.apply_linear(hamiltonian, n_sweeps=n_sub_sweeps)
+
+            k4 = k3 + mps
+            k4 = type(self)(tensors=k4.tensors, opts=mps.opts)
+            k4 = dt * k4.apply_linear(hamiltonian, n_sweeps=n_sub_sweeps)
+
+            mps = mps + (k1 + 2*k2 + 2*k3 + k4)/6
+            mps = type(self)(tensors=mps.tensors, opts=mps.opts)
+
+        return mps
+
     def time_evolve(self, time: float,
                     hamiltonian: Union[FqeHamiltonian, MPS],
                     inplace: bool = False,
@@ -251,6 +284,9 @@ class MPSWavefunction(MPS):
                                cached=cached, cutoff=cutoff)
         if method.lower() == "rk4":
             return self.rk4_apply(time, hamiltonian, steps)
+        if method.lower() == "rk4-linear":
+            return self.rk4_apply_linear(
+                time, hamiltonian, steps, n_sub_sweeps)
         raise ValueError(
             f"method needs to be 'tddmrg' or 'rk4', '{method}' given")
 
