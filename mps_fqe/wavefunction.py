@@ -161,6 +161,9 @@ class MPSWavefunction(MPS):
         print("BOND DIMENSIONS")
         print(self.show_bond_dims())
 
+    def norb(self) -> int:
+        return self.n_sites
+
     def canonicalize(self, center) -> "MPSWavefunction":
         return self.from_pyblock3_mps(super().canonicalize(center))
 
@@ -400,7 +403,7 @@ class MPSWavefunction(MPS):
         return rdm
 
 
-def get_hf_mps(nele, sz, norbs, bdim, e0=0, cutoff=0.0, full=True):
+def get_hf_mps(nele, sz, norbs, bdim, e0=0, cutoff=0.0, full=True, occ=None):
     if (nele + abs(sz)) // 2 > norbs:
         raise ValueError(
             f"Electron number is too large (nele = {nele}, norb = {norbs})")
@@ -417,7 +420,21 @@ def get_hf_mps(nele, sz, norbs, bdim, e0=0, cutoff=0.0, full=True):
     ndocc = (nele - nsocc) // 2
     nvirt = norbs - nsocc - ndocc
     assert nvirt >= 0
-    occ = [2]*ndocc + [1]*nsocc + [0]*nvirt
+    if occ is None:
+        occ = [2]*ndocc + [1]*nsocc + [0]*nvirt
+    occd = occ.count(2)
+    occs = occ.count(1)
+    occv = occ.count(0)
+    if occd != ndocc:
+        raise ValueError(
+            "Inconsistent doubly occupied orbitals: {occd} ({docc})")
+    if occs != nsocc:
+        raise ValueError(
+            "Inconsistent singly occupied orbitals: {occs} ({socc})")
+    if occv != nvirt:
+        raise ValueError(
+            "Inconsistent virtual orbitals: {occv} ({virt})")
+
     hamil = Hamiltonian(fd, flat=True)
     mps_info = MPSInfo(hamil.n_sites, hamil.vacuum, hamil.target, hamil.basis)
     mps_info.set_bond_dimension_occ(bdim, occ=occ)
