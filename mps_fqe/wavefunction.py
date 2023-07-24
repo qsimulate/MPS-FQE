@@ -297,6 +297,9 @@ class MPSWavefunction(MPS):
     def expectationValue(self, hamiltonian: MPS,
                          brawfn: Optional["MPSWavefunction"] = None) -> float:
         bra = self if brawfn is None else brawfn
+        if isinstance(hamiltonian, FqeHamiltonian):
+            hamiltonian = mpo_from_fqe_hamiltonian(hamiltonian,
+                                                   n_sites=self.n_sites)
         return MPE(bra, hamiltonian, self)[0:2].expectation
 
     def get_FCITensor(self) -> FlatSparseTensor:
