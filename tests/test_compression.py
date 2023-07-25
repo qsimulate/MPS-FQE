@@ -1,9 +1,7 @@
-from numpy import einsum
-
 import fqe
 from mps_fqe.wavefunction import MPSWavefunction
 from mps_fqe.hamiltonian import mpo_from_fqe_hamiltonian
-from .test_H_ring import get_H_ring_data
+from .test_H_ring import get_H_ring_data, hamiltonian_from_molecule
 
 
 def test_propagation():
@@ -13,15 +11,11 @@ def test_propagation():
     nele = molecule.n_electrons
     sz = molecule.multiplicity - 1
     norbs = molecule.n_orbitals
-    h1, h2 = molecule.get_integrals()
+    hamiltonian = hamiltonian_from_molecule(molecule)
 
     fqe_wfn = fqe.Wavefunction([[nele, sz, norbs]])
     fqe_wfn.set_wfn(strategy="random")
     fqe_wfn.normalize()
-    e_0 = molecule.nuclear_repulsion
-    hamiltonian = fqe.get_restricted_hamiltonian((h1,
-                                                  einsum("ijlk", -0.5 * h2)),
-                                                 e_0=e_0)
 
     mpo = mpo_from_fqe_hamiltonian(fqe_ham=hamiltonian)
     mps = MPSWavefunction.from_fqe_wavefunction(fqe_wfn, max_bond_dim=mbd)

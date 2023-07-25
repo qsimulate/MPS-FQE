@@ -161,6 +161,9 @@ class MPSWavefunction(MPS):
         print("BOND DIMENSIONS")
         print(self.show_bond_dims())
 
+    def norb(self) -> int:
+        return self.n_sites
+
     def canonicalize(self, center) -> "MPSWavefunction":
         return self.from_pyblock3_mps(super().canonicalize(center))
 
@@ -169,17 +172,25 @@ class MPSWavefunction(MPS):
 
         return self.from_pyblock3_mps(mps), merror
 
-    def apply(self, hamiltonian: Union[FqeHamiltonian, MPS])\
-            -> "MPSWavefunction":
-        if isinstance(hamiltonian, FqeHamiltonian):
-            hamiltonian = mpo_from_fqe_hamiltonian(hamiltonian,
-                                                   n_sites=self.n_sites)
-        if hamiltonian.n_sites != self.n_sites:
-            raise ValueError('Hamiltonian has incorrect size:'
-                             + ' expected {}'.format(self.n_sites)
-                             + ' provided {}'.format(hamiltonian.n_sites))
+    def apply_linear(self,
+                     mpo: MPS,
+                     n_sweeps: int = 4,
+                     cutoff: float = 0.0) -> "MPSWavefunction":
+        bra = self.copy()
         mps = self.copy()
-        mps = hamiltonian @ mps + 0*mps
+        bdim = self.opts['max_bond_dim']
+        noises = [0.0]
+        bdims = [bdim]
+
+        MPE(bra, mpo - mpo.const, mps).linear(
+            bdims=bdims, noises=noises,
+            cg_thrds=None, iprint=0, n_sweeps=n_sweeps, tol=cutoff)
+        bra += mpo.const*mps
+        return type(self)(tensors=bra.tensors, opts=self.opts)
+
+    def apply_exact(self, mpo: MPS) -> "MPSWavefunction":
+        mps = self.copy()
+        mps = mpo @ mps + 0*mps
 
         # It may still be possible to get an integer zero here.
         # For now, we raise a RuntimeError
@@ -189,12 +200,31 @@ class MPSWavefunction(MPS):
 
         return type(self)(tensors=mps.tensors, opts=mps.opts)
 
+    def apply(self,
+              hamiltonian: Union[FqeHamiltonian, MPS],
+              exact: bool = True) -> "MPSWavefunction":
+        if isinstance(hamiltonian, FqeHamiltonian):
+            hamiltonian = mpo_from_fqe_hamiltonian(hamiltonian,
+                                                   n_sites=self.n_sites)
+        if hamiltonian.n_sites != self.n_sites:
+            raise ValueError('Hamiltonian has incorrect size:'
+                             + ' expected {}'.format(self.n_sites)
+                             + ' provided {}'.format(hamiltonian.n_sites))
+
+        if exact:
+            return self.apply_exact(hamiltonian)
+        return self.apply_linear(hamiltonian)
+
     def transform(self):
         pass
 
-    def tddmrg(self, time: float, hamiltonian: MPS,
-               steps: int = 1, n_sub_sweeps: int = 1,
-               cached: bool = False):
+    def tddmrg(self,
+               time: float,
+               hamiltonian: MPS,
+               steps: int = 1,
+               n_sub_sweeps: int = 1,
+               cached: bool = False,
+               cutoff: float = 1E-14) -> "MPSWavefunction":
         dt = time / steps
         mps = self.copy()
 
@@ -203,10 +233,10 @@ class MPSWavefunction(MPS):
         bdim = mps.opts.get("max_bond_dim", -1)
 
         mpe.tddmrg(bdims=[bdim], dt=-dt * 1j, iprint=0, n_sweeps=steps,
-                   normalize=False, n_sub_sweeps=n_sub_sweeps, cutoff=0)
+                   normalize=True, n_sub_sweeps=n_sub_sweeps, cutoff=cutoff)
 
         mps += 0*self
-        return type(self)(tensors=mps.tensors, opts=mps.opts)
+        return type(self)(tensors=mps.tensors, opts=self.opts)
 
     def rk4_apply(self, time: float, hamiltonian: MPS,
                   steps: int = 1) -> "MPSWavefunction":
@@ -218,28 +248,70 @@ class MPSWavefunction(MPS):
 
         return type(self)(tensors=mps.tensors, opts=mps.opts)
 
-    def time_evolve(self, time: float,
+    def rk4_apply_linear(self,
+                         time: float,
+                         hamiltonian: MPS,
+                         steps: int = 1,
+                         n_sub_sweeps: int = 1,
+                         cutoff: float = 0.0) -> "MPSWavefunction":
+        dt = -1.j * time / steps
+        tmp = self.copy()
+        mps = type(self)(tensors=tmp.tensors, opts=self.opts)
+        for ii in range(steps):
+            k1 = dt * mps.apply_linear(
+                hamiltonian, n_sweeps=n_sub_sweeps, cutoff=cutoff)
+
+            k2 = 0.5 * k1 + mps
+            k2 = type(self)(tensors=k2.tensors, opts=mps.opts)
+            k2 = dt * k2.apply_linear(
+                hamiltonian, n_sweeps=n_sub_sweeps, cutoff=cutoff)
+
+            k3 = 0.5 * k2 + mps
+            k3 = type(self)(tensors=k3.tensors, opts=mps.opts)
+            k3 = dt * k3.apply_linear(
+                hamiltonian, n_sweeps=n_sub_sweeps, cutoff=cutoff)
+
+            k4 = k3 + mps
+            k4 = type(self)(tensors=k4.tensors, opts=mps.opts)
+            k4 = dt * k4.apply_linear(
+                hamiltonian, n_sweeps=n_sub_sweeps, cutoff=cutoff)
+
+            mps = mps + (k1 + 2*k2 + 2*k3 + k4)/6
+            mps = type(self)(tensors=mps.tensors, opts=mps.opts)
+
+        return mps
+
+    def time_evolve(self,
+                    time: float,
                     hamiltonian: Union[FqeHamiltonian, MPS],
                     inplace: bool = False,
                     steps: int = 1,
                     n_sub_sweeps: int = 1,
                     method: str = "tddmrg",
-                    cached: bool = False) -> "MPSWavefunction":
+                    cached: bool = False,
+                    cutoff: float = 1E-14) -> "MPSWavefunction":
         if isinstance(hamiltonian, FqeHamiltonian):
             hamiltonian = mpo_from_fqe_hamiltonian(hamiltonian,
                                                    n_sites=self.n_sites)
         if method.lower() == "tddmrg":
             return self.tddmrg(time, hamiltonian, steps,
                                n_sub_sweeps=n_sub_sweeps,
-                               cached=cached)
+                               cached=cached, cutoff=cutoff)
         if method.lower() == "rk4":
             return self.rk4_apply(time, hamiltonian, steps)
+        if method.lower() == "rk4-linear":
+            return self.rk4_apply_linear(time, hamiltonian, steps=steps,
+                                         n_sub_sweeps=n_sub_sweeps,
+                                         cutoff=cutoff)
         raise ValueError(
             f"method needs to be 'tddmrg' or 'rk4', '{method}' given")
 
     def expectationValue(self, hamiltonian: MPS,
                          brawfn: Optional["MPSWavefunction"] = None) -> float:
         bra = self if brawfn is None else brawfn
+        if isinstance(hamiltonian, FqeHamiltonian):
+            hamiltonian = mpo_from_fqe_hamiltonian(hamiltonian,
+                                                   n_sites=self.n_sites)
         return MPE(bra, hamiltonian, self)[0:2].expectation
 
     def get_FCITensor(self) -> FlatSparseTensor:
@@ -346,7 +418,11 @@ class MPSWavefunction(MPS):
         return rdm
 
 
-def get_hf_mps(nele, sz, norbs, bdim, e0=0, cutoff=0.0, full=True):
+def get_hf_mps(nele, sz, norbs, bdim,
+               e0: float = 0.0,
+               cutoff: float = 0.0,
+               full: bool = True,
+               occ: Optional[list[int]] = None) -> "MPSWavefunction":
     if (nele + abs(sz)) // 2 > norbs:
         raise ValueError(
             f"Electron number is too large (nele = {nele}, norb = {norbs})")
@@ -363,7 +439,21 @@ def get_hf_mps(nele, sz, norbs, bdim, e0=0, cutoff=0.0, full=True):
     ndocc = (nele - nsocc) // 2
     nvirt = norbs - nsocc - ndocc
     assert nvirt >= 0
-    occ = [2]*ndocc + [1]*nsocc + [0]*nvirt
+    if occ is None:
+        occ = [2]*ndocc + [1]*nsocc + [0]*nvirt
+    occd = occ.count(2)
+    occs = occ.count(1)
+    occv = occ.count(0)
+    if occd != ndocc:
+        raise ValueError(
+            "Inconsistent doubly occupied orbitals: {occd} ({docc})")
+    if occs != nsocc:
+        raise ValueError(
+            "Inconsistent singly occupied orbitals: {occs} ({socc})")
+    if occv != nvirt:
+        raise ValueError(
+            "Inconsistent virtual orbitals: {occv} ({virt})")
+
     hamil = Hamiltonian(fd, flat=True)
     mps_info = MPSInfo(hamil.n_sites, hamil.vacuum, hamil.target, hamil.basis)
     mps_info.set_bond_dimension_occ(bdim, occ=occ)
