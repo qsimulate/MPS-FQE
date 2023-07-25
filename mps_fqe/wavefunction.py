@@ -172,8 +172,10 @@ class MPSWavefunction(MPS):
 
         return self.from_pyblock3_mps(mps), merror
 
-    def apply_linear(self, mpo: MPS, n_sweeps: int = 4, cutoff=0.0) \
-            -> "MPSWavefunction":
+    def apply_linear(self,
+                     mpo: MPS,
+                     n_sweeps: int = 4,
+                     cutoff: float = 0.0) -> "MPSWavefunction":
         bra = self.copy()
         mps = self.copy()
         bdim = self.opts['max_bond_dim']
@@ -198,8 +200,9 @@ class MPSWavefunction(MPS):
 
         return type(self)(tensors=mps.tensors, opts=mps.opts)
 
-    def apply(self, hamiltonian: Union[FqeHamiltonian, MPS], exact=True)\
-            -> "MPSWavefunction":
+    def apply(self,
+              hamiltonian: Union[FqeHamiltonian, MPS],
+              exact: bool = True) -> "MPSWavefunction":
         if isinstance(hamiltonian, FqeHamiltonian):
             hamiltonian = mpo_from_fqe_hamiltonian(hamiltonian,
                                                    n_sites=self.n_sites)
@@ -215,9 +218,13 @@ class MPSWavefunction(MPS):
     def transform(self):
         pass
 
-    def tddmrg(self, time: float, hamiltonian: MPS,
-               steps: int = 1, n_sub_sweeps: int = 1,
-               cached: bool = False, cutoff: float = 1E-14):
+    def tddmrg(self,
+               time: float,
+               hamiltonian: MPS,
+               steps: int = 1,
+               n_sub_sweeps: int = 1,
+               cached: bool = False,
+               cutoff: float = 1E-14) -> "MPSWavefunction":
         dt = time / steps
         mps = self.copy()
 
@@ -241,8 +248,12 @@ class MPSWavefunction(MPS):
 
         return type(self)(tensors=mps.tensors, opts=mps.opts)
 
-    def rk4_apply_linear(self, time: float, hamiltonian: MPS,
-                         steps: int = 1, n_sub_sweeps: int = 1, cutoff=0.0):
+    def rk4_apply_linear(self,
+                         time: float,
+                         hamiltonian: MPS,
+                         steps: int = 1,
+                         n_sub_sweeps: int = 1,
+                         cutoff: float = 0.0) -> "MPSWavefunction":
         dt = -1.j * time / steps
         tmp = self.copy()
         mps = type(self)(tensors=tmp.tensors, opts=self.opts)
@@ -270,7 +281,8 @@ class MPSWavefunction(MPS):
 
         return mps
 
-    def time_evolve(self, time: float,
+    def time_evolve(self,
+                    time: float,
                     hamiltonian: Union[FqeHamiltonian, MPS],
                     inplace: bool = False,
                     steps: int = 1,
@@ -406,7 +418,11 @@ class MPSWavefunction(MPS):
         return rdm
 
 
-def get_hf_mps(nele, sz, norbs, bdim, e0=0, cutoff=0.0, full=True, occ=None):
+def get_hf_mps(nele, sz, norbs, bdim,
+               e0: float = 0.0,
+               cutoff: float = 0.0,
+               full: bool = True,
+               occ: Optional[list[int]] = None) -> "MPSWavefunction":
     if (nele + abs(sz)) // 2 > norbs:
         raise ValueError(
             f"Electron number is too large (nele = {nele}, norb = {norbs})")
