@@ -104,4 +104,3 @@ def test_expectationValue():
     ref_de = wfn.expectationValue(hamiltonian, brawfn=bra_wfn)
     mps_de = mps.expectationValue(hamiltonian, brawfn=bra_mps)
     assert abs(ref_de - mps_de) < tol
-
