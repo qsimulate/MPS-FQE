@@ -75,3 +75,33 @@ def test_wavefunction_apply_1particle():
 
     # check the 1-rdm
     assert numpy.allclose(out.rdm('i^ j'), ref.rdm('i^ j'))
+
+
+def test_expectationValue():
+    nele, sz, norb = 4, 0, 4
+    tol = 1E-13
+    numpy.random.seed(77)
+
+    # random wavefunction
+    wfn = fqe.Wavefunction([[nele, sz, norb]])
+    wfn.set_wfn(strategy="random")
+    mps = MPSWavefunction.from_fqe_wavefunction(wfn, max_bond_dim=200)
+
+    # random bra wavefunction
+    bra_wfn = fqe.Wavefunction([[nele, sz, norb]])
+    bra_wfn.set_wfn(strategy="random")
+    bra_mps = MPSWavefunction.from_fqe_wavefunction(bra_wfn, max_bond_dim=200)
+
+    # get random 1-particle restricted Hamiltonian
+    h1 = numpy.random.rand(norb, norb)
+    h1 += h1.transpose()
+    hamiltonian = fqe.get_restricted_hamiltonian((h1,), e_0=0)
+
+    ref_energy = wfn.expectationValue(hamiltonian)
+    mps_energy = mps.expectationValue(hamiltonian)
+    assert abs(ref_energy - mps_energy) < tol
+
+    ref_de = wfn.expectationValue(hamiltonian, brawfn=bra_wfn)
+    mps_de = mps.expectationValue(hamiltonian, brawfn=bra_mps)
+    assert abs(ref_de - mps_de) < tol
+

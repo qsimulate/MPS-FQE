@@ -312,7 +312,8 @@ class MPSWavefunction(MPS):
         if isinstance(hamiltonian, FqeHamiltonian):
             hamiltonian = mpo_from_fqe_hamiltonian(hamiltonian,
                                                    n_sites=self.n_sites)
-        return MPE(bra, hamiltonian, self)[0:2].expectation
+
+        return MPE(bra, hamiltonian, self).expectation
 
     def get_FCITensor(self) -> FlatSparseTensor:
         return functools.reduce(lambda x, y: numpy.tensordot(x, y, axes=1),
