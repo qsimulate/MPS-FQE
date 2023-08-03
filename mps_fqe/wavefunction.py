@@ -327,7 +327,7 @@ class MPSWavefunction(MPS):
         self.tensors[0] = sval*self.tensors[0]
 
     def rdm(self, string: str, brawfn: Optional["MPSWavefunction"] = None,
-            block2: bool = False) -> Union[complex, numpy.ndarray]:
+            block2: bool = True) -> Union[complex, numpy.ndarray]:
         # Get an individual rdm element
         if any(char.isdigit() for char in string):
             mpo = mpo_from_fqe_hamiltonian(
