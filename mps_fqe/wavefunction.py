@@ -441,12 +441,13 @@ class MPSWavefunction(MPS):
             b2mps = MPSTools.to_block2(self, save_dir=driver.scratch)
             b2mpo = MPOTools.to_block2(hamiltonian, use_complex=True)
 
-            b2mps = driver.td_dmrg(b2mpo, b2mps, delta_t=dt, n_steps=steps,
+            b2mps = driver.td_dmrg(b2mpo, b2mps, delta_t=dt*1j, n_steps=steps,
                                    bond_dims=[bdim],
                                    n_sub_sweeps=n_sub_sweeps,
-                                   cutoff=cutoff, iprint=iprint)
+                                   cutoff=cutoff, iprint=iprint,
+                                   normalize_mps=False)
 
-            mps = MPSTools.from_block2(b2mps)
+            mps = MPSTools.from_block2(b2mps).to_flat()
 
         return type(self)(tensors=mps.tensors, opts=self.opts)
 
@@ -490,11 +491,11 @@ def get_hf_mps(nele, sz, norbs, bdim,
     hamil = Hamiltonian(fd, flat=True)
     mps_info = MPSInfo(hamil.n_sites, hamil.vacuum, hamil.target, hamil.basis)
     mps_info.set_bond_dimension_occ(bdim, occ=occ)
-    mps_wfn = MPS.ones(mps_info)
+    mps_wfn = MPS.ones(mps_info, dtype=complex)
     if full:
         mps_info_full = MPSInfo(
             hamil.n_sites, hamil.vacuum, hamil.target, hamil.basis)
         mps_info_full.set_bond_dimension(bdim)
-        mps_wfn += 0*MPS.ones(mps_info_full)
+        mps_wfn += 0*MPS.ones(mps_info_full, dtype=complex)
     return MPSWavefunction.from_pyblock3_mps(mps_wfn, max_bond_dim=bdim,
                                              cutoff=cutoff)
