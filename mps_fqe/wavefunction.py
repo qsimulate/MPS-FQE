@@ -430,12 +430,13 @@ class MPSWavefunction(MPS):
         bdim = self.opts.get("max_bond_dim", -1)
         if bdim == -1:
             bdim = 4 ** ((self.n_sites + 1) // 2)
+        n_threads = int(os.environ['OMP_NUM_THREADS'])
 
         with tempfile.TemporaryDirectory() as temp_dir:
             os.environ['TMPDIR'] = str(temp_dir)
             driver = DMRGDriver(scratch=os.environ['TMPDIR'],
                                 symm_type=SymmetryTypes.SZ | SymmetryTypes.CPX,
-                                n_threads=1)
+                                n_threads=n_threads)
             driver.initialize_system(n_sites=self.n_sites,
                                      orb_sym=[0]*self.n_sites)
             b2mps = MPSTools.to_block2(self, save_dir=driver.scratch)
