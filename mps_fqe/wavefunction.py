@@ -225,7 +225,7 @@ class MPSWavefunction(MPS):
                n_sub_sweeps: int = 1,
                cached: bool = False,
                cutoff: float = 1E-14,
-               block2: bool = True) -> "MPSWavefunction":
+               block2: bool = False) -> "MPSWavefunction":
         if block2:
             return self._block2_tddmrg(time=time, hamiltonian=hamiltonian,
                                        steps=steps, n_sub_sweeps=n_sub_sweeps,
@@ -430,7 +430,11 @@ class MPSWavefunction(MPS):
         bdim = self.opts.get("max_bond_dim", -1)
         if bdim == -1:
             bdim = 4 ** ((self.n_sites + 1) // 2)
-        n_threads = int(os.environ['OMP_NUM_THREADS'])
+        try:
+            n_threads = int(os.environ['OMP_NUM_THREADS'])
+        except KeyError:
+            # OMP_NUM_THRAEDS is not set
+            n_threads = 1
 
         with tempfile.TemporaryDirectory() as temp_dir:
             os.environ['TMPDIR'] = str(temp_dir)
