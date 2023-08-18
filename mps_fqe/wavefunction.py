@@ -294,7 +294,7 @@ class MPSWavefunction(MPS):
                     n_sub_sweeps: int = 1,
                     method: str = "tddmrg",
                     cached: bool = False,
-                    cutoff: float = 1E-14,
+                    cutoff: float = 1E-16,
                     block2: bool = True) -> "MPSWavefunction":
         if isinstance(hamiltonian, FqeHamiltonian):
             hamiltonian = mpo_from_fqe_hamiltonian(hamiltonian,
