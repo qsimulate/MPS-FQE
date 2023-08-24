@@ -428,6 +428,11 @@ class MPSWavefunction(MPS):
                        cutoff: float = 1E-14, iprint: int = 0):
         dt = time / steps
         bdim = self.opts.get("max_bond_dim", -1)
+
+        # Avoid Pade issue by adding a negligible noise term
+        hamiltonian += 1E-18 * utils.one_body_projection_mpo(0, 0,
+                                                             self.n_sites)
+
         if bdim == -1:
             bdim = 4 ** ((self.n_sites + 1) // 2)
         try:
