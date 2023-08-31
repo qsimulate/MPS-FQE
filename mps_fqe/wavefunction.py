@@ -432,16 +432,25 @@ class MPSWavefunction(MPS):
 
         # Avoid Pade issue by adding a negligible noise term
         if add_noise:
-            hamiltonian += 1E-18 * utils.one_body_projection_mpo(0, 0,
-                                                                 self.n_sites)
+            fd = FCIDUMP(pg="c1", n_sites=self.n_sites)
+            hamil = Hamiltonian(fd, flat=True)
+            identity_mpo = hamil.build_identity_mpo().to_sparse()
+            identity_mpo, _ = identity_mpo.compress(cutoff=cutoff)
+            hamiltonian += 0 * identity_mpo
 
         if bdim == -1:
             bdim = 4 ** ((self.n_sites + 1) // 2)
         try:
             n_threads = int(os.environ['OMP_NUM_THREADS'])
         except KeyError:
-            # OMP_NUM_THRAEDS is not set
+            # OMP_NUM_THREADS is not set
             n_threads = 1
+
+        #Make MPS complex if not already
+        if not numpy.iscomplexobj(self.tensors[0].data):
+            print("got here")
+            for i in range(self.n_sites):
+                self.tensors[i].data = self.tensors[i].data.astype(complex)
 
         with tempfile.TemporaryDirectory() as temp_dir:
             os.environ['TMPDIR'] = str(temp_dir)
@@ -458,7 +467,6 @@ class MPSWavefunction(MPS):
                                    n_sub_sweeps=n_sub_sweeps,
                                    cutoff=cutoff, iprint=iprint,
                                    normalize_mps=False)
-
             mps = MPSTools.from_block2(b2mps).to_flat()
 
         return type(self)(tensors=mps.tensors, opts=self.opts)
@@ -503,11 +511,11 @@ def get_hf_mps(nele, sz, norbs, bdim,
     hamil = Hamiltonian(fd, flat=True)
     mps_info = MPSInfo(hamil.n_sites, hamil.vacuum, hamil.target, hamil.basis)
     mps_info.set_bond_dimension_occ(bdim, occ=occ)
-    mps_wfn = MPS.ones(mps_info, dtype=complex)
+    mps_wfn = MPS.ones(mps_info)
     if full:
         mps_info_full = MPSInfo(
             hamil.n_sites, hamil.vacuum, hamil.target, hamil.basis)
         mps_info_full.set_bond_dimension(bdim)
-        mps_wfn += 0*MPS.ones(mps_info_full, dtype=complex)
+        mps_wfn += 0*MPS.ones(mps_info_full)
     return MPSWavefunction.from_pyblock3_mps(mps_wfn, max_bond_dim=bdim,
                                              cutoff=cutoff)
