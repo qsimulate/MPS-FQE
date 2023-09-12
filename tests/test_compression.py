@@ -1,4 +1,3 @@
-import numpy as np
 import fqe
 from mps_fqe.wavefunction import MPSWavefunction
 from mps_fqe.hamiltonian import mpo_from_fqe_hamiltonian
