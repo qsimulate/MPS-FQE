@@ -426,7 +426,7 @@ class MPSWavefunction(MPS):
     def _block2_tddmrg(self, time: float, hamiltonian: MPS,
                        steps: int = 1, n_sub_sweeps: int = 1,
                        cutoff: float = 1E-14, iprint: int = 0,
-                       add_noise: bool = False):
+                       add_noise: bool = False, normalize_mps = False):
         dt = time / steps
         bdim = self.opts.get("max_bond_dim", -1)
 
@@ -464,7 +464,7 @@ class MPSWavefunction(MPS):
                                    bond_dims=[bdim],
                                    n_sub_sweeps=n_sub_sweeps,
                                    cutoff=cutoff, iprint=iprint,
-                                   normalize_mps=False)
+                                   normalize_mps=normalize_mps)
             mps = MPSTools.from_block2(b2mps).to_flat()
 
         return type(self)(tensors=mps.tensors, opts=self.opts)
