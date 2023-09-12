@@ -58,14 +58,18 @@ def test_H_ring_evolve():
     assert np.isclose(phase, 1.0)
 
 
-@pytest.mark.parametrize("time_axis", ["real", "imaginary"])
-def test_sparse_operator_evolve(time_axis):
+@pytest.mark.parametrize("time_axis,strategy",
+                         product(["real", "imaginary"],
+                                 ["random", "hartree-fock"]))
+def test_sparse_operator_evolve(time_axis, strategy):
     t = 0.1 if time_axis == "real" else 0.1j
     norbs = 4
     nele = 4
     sz = 0
     steps = 1
     n_sub_sweeps = 1
+    max_bond_dim = 4 ** (norbs+1 // 2)
+    add_noise = strategy == "hartree-fock"
 
     k1_triu = np.triu_indices(norbs, k=1)
     nvars = norbs * (norbs-1) // 2
@@ -75,12 +79,12 @@ def test_sparse_operator_evolve(time_axis):
     mat += mat.T
 
     fqe_wfn = Wavefunction([[nele, sz, norbs]])
-    fqe_wfn.set_wfn(strategy='random')
+    fqe_wfn.set_wfn(strategy=strategy)
 
     mps_wfn = MPSWavefunction.from_fqe_wavefunction(fqe_wfn)
-    mps_wfn, _ = mps_wfn.compress(cutoff=1E-14, max_bond_dim=1500)
+    mps_wfn, _ = mps_wfn.compress(cutoff=1E-14, max_bond_dim=max_bond_dim)
     fqe_ops = get_fqe_operators(mat)
-    print(vdot(fqe_wfn, fqe_wfn))
+
     for fqe_op in fqe_ops:
         mpo = mpo_from_fqe_hamiltonian(fqe_op, norbs)
         fqe_evolved = fqe_wfn.time_evolve(t, fqe_op)
@@ -89,7 +93,7 @@ def test_sparse_operator_evolve(time_axis):
                                                 steps=steps,
                                                 n_sub_sweeps=n_sub_sweeps,
                                                 cutoff=0, iprint=0,
-                                                add_noise=False)
+                                                add_noise=add_noise)
         block2_ovlp = block2_evolved.conj() @ mps_wfn
         pyblock_evolved = mps_wfn.tddmrg(time=t, hamiltonian=mpo, steps=steps,
                                          n_sub_sweeps=n_sub_sweeps, cutoff=0,
