@@ -6,7 +6,7 @@ import numpy as np
 from fqe.wavefunction import Wavefunction
 from fqe.hamiltonians.sparse_hamiltonian import SparseHamiltonian
 from fqe.util import vdot
-from test_H_ring import get_H_ring_data, \
+from .test_H_ring import get_H_ring_data, \
     hamiltonian_from_molecule
 from mps_fqe.wavefunction import MPSWavefunction, get_hf_mps
 from mps_fqe.hamiltonian import mpo_from_fqe_hamiltonian
@@ -59,7 +59,7 @@ def test_H_ring_evolve():
 
 
 @pytest.mark.parametrize("time_axis", ["real", "imaginary"])
-def test_sparse_operator_evolve(time_axis: str = "real"):
+def test_sparse_operator_evolve(time_axis):
     t = 0.1 if time_axis == "real" else 0.1j
     norbs = 4
     nele = 4
