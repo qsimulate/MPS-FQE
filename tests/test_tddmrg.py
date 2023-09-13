@@ -92,28 +92,18 @@ def test_sparse_operator_evolve(time_axis, strategy):
         fqe_ovlp = vdot(fqe_evolved, fqe_wfn)
 
         mpo = mpo_from_fqe_hamiltonian(fqe_op, norbs)
-        print(time_axis, strategy)
-        print("before evolution")
-        print(mpo.tensors)
-        print("================================================")
-
         block2_evolved = mps_wfn._block2_tddmrg(time=t, hamiltonian=mpo,
                                                 steps=steps,
                                                 n_sub_sweeps=n_sub_sweeps,
                                                 cutoff=0, iprint=0,
                                                 add_noise=add_noise)
         block2_ovlp = block2_evolved.conj() @ mps_wfn
-        print("after block2 evolution")
-        print(mpo.tensors)
-        print("================================================")
 
+        # Will get insufficent quantum numbers if noise term not added first
         pyblock_evolved = mps_wfn.tddmrg(time=t, hamiltonian=mpo, steps=steps,
                                          n_sub_sweeps=n_sub_sweeps, cutoff=0,
                                          block2=False)
         pyblock_ovlp = pyblock_evolved.conj() @ mps_wfn
-        print("after pyblock evolution")
-        print(mpo.tensors)
-        print("================================================")        
 
         assert np.isclose(block2_ovlp, pyblock_ovlp)
         assert np.isclose(fqe_ovlp, block2_ovlp)        
