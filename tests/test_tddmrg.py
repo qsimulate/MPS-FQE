@@ -14,7 +14,8 @@ from openfermion import FermionOperator
 from openfermion.utils import hermitian_conjugated
 
 
-def get_fqe_operators(mat: np.ndarray):
+def get_fqe_operators(mat: np.ndarray, hermitian: bool = True):
+    sign = 1 if hermitian else -1
     norbs = mat.shape[0]
     fqe_ops = []
     for i, j in product(range(norbs), repeat=2):
@@ -26,7 +27,7 @@ def get_fqe_operators(mat: np.ndarray):
                                 coefficient=mat[i, j])
         of_op += FermionOperator(((2*i+1, 1), (2*j+1, 0)),
                                  coefficient=mat[i, j])
-        of_op -= hermitian_conjugated(of_op)
+        of_op += sign * hermitian_conjugated(of_op)
         fqe_ops.append(SparseHamiltonian(of_op))
     return fqe_ops
 
@@ -70,6 +71,7 @@ def test_sparse_operator_evolve(time_axis, strategy):
     n_sub_sweeps = 1
     max_bond_dim = 4 ** (norbs+1 // 2)
     add_noise = strategy == "hartree-fock"
+    hermitian = time_axis == "real"
 
     k1_triu = np.triu_indices(norbs, k=1)
     nvars = norbs * (norbs-1) // 2
@@ -83,21 +85,35 @@ def test_sparse_operator_evolve(time_axis, strategy):
 
     mps_wfn = MPSWavefunction.from_fqe_wavefunction(fqe_wfn)
     mps_wfn, _ = mps_wfn.compress(cutoff=1E-14, max_bond_dim=max_bond_dim)
-    fqe_ops = get_fqe_operators(mat)
+    fqe_ops = get_fqe_operators(mat, hermitian)
 
     for fqe_op in fqe_ops:
-        mpo = mpo_from_fqe_hamiltonian(fqe_op, norbs)
         fqe_evolved = fqe_wfn.time_evolve(t, fqe_op)
         fqe_ovlp = vdot(fqe_evolved, fqe_wfn)
+
+        mpo = mpo_from_fqe_hamiltonian(fqe_op, norbs)
+        print(time_axis, strategy)
+        print("before evolution")
+        print(mpo.tensors)
+        print("================================================")
+
         block2_evolved = mps_wfn._block2_tddmrg(time=t, hamiltonian=mpo,
                                                 steps=steps,
                                                 n_sub_sweeps=n_sub_sweeps,
                                                 cutoff=0, iprint=0,
                                                 add_noise=add_noise)
         block2_ovlp = block2_evolved.conj() @ mps_wfn
+        print("after block2 evolution")
+        print(mpo.tensors)
+        print("================================================")
+
         pyblock_evolved = mps_wfn.tddmrg(time=t, hamiltonian=mpo, steps=steps,
                                          n_sub_sweeps=n_sub_sweeps, cutoff=0,
                                          block2=False)
         pyblock_ovlp = pyblock_evolved.conj() @ mps_wfn
-        assert np.isclose(fqe_ovlp, block2_ovlp)
+        print("after pyblock evolution")
+        print(mpo.tensors)
+        print("================================================")        
+
         assert np.isclose(block2_ovlp, pyblock_ovlp)
+        assert np.isclose(fqe_ovlp, block2_ovlp)        

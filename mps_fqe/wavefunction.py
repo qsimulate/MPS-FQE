@@ -426,9 +426,13 @@ class MPSWavefunction(MPS):
     def _block2_tddmrg(self, time: float, hamiltonian: MPS,
                        steps: int = 1, n_sub_sweeps: int = 1,
                        cutoff: float = 1E-14, iprint: int = 0,
-                       add_noise: bool = False, normalize_mps = False):
+                       add_noise: bool = False, normalize_mps: bool = False):
         dt = time / steps
         bdim = self.opts.get("max_bond_dim", -1)
+        #Make MPS complex if not already and if doing real time propagation
+        if not numpy.iscomplexobj(self.tensors[0].data) and time.real != 0:
+            for i in range(self.n_sites):
+                self.tensors[i].data = self.tensors[i].data.astype(complex)
 
         # Avoid Pade issue by adding a negligible noise term
         if add_noise:
@@ -436,7 +440,6 @@ class MPSWavefunction(MPS):
             hamil = Hamiltonian(fd, flat=True)
             identity_mpo = hamil.build_identity_mpo().to_sparse()
             hamiltonian += 1E-18 * identity_mpo
-
         if bdim == -1:
             bdim = 4 ** ((self.n_sites + 1) // 2)
         try:
@@ -444,11 +447,6 @@ class MPSWavefunction(MPS):
         except KeyError:
             # OMP_NUM_THREADS is not set
             n_threads = 1
-
-        #Make MPS complex if not already
-        if not numpy.iscomplexobj(self.tensors[0].data):
-            for i in range(self.n_sites):
-                self.tensors[i].data = self.tensors[i].data.astype(complex)
 
         with tempfile.TemporaryDirectory() as temp_dir:
             os.environ['TMPDIR'] = str(temp_dir)
