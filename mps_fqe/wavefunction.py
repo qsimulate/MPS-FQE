@@ -436,10 +436,9 @@ class MPSWavefunction(MPS):
 
         # Avoid Pade issue by adding a negligible noise term
         if add_noise:
-            fd = FCIDUMP(pg="c1", n_sites=self.n_sites)
-            hamil = Hamiltonian(fd, flat=True)
-            identity_mpo = hamil.build_identity_mpo().to_sparse()
-            hamiltonian += 1E-18 * identity_mpo
+            hamiltonian = MPS(tensors=hamiltonian.tensors,
+                              opts=hamiltonian.opts,
+                              const=1E-20)
         if bdim == -1:
             bdim = 4 ** ((self.n_sites + 1) // 2)
         try:

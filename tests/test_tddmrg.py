@@ -84,7 +84,6 @@ def test_sparse_operator_evolve(time_axis, strategy):
     fqe_wfn.set_wfn(strategy=strategy)
 
     mps_wfn = MPSWavefunction.from_fqe_wavefunction(fqe_wfn)
-    mps_wfn, _ = mps_wfn.compress(cutoff=1E-14, max_bond_dim=max_bond_dim)
     fqe_ops = get_fqe_operators(mat, hermitian)
 
     for fqe_op in fqe_ops:
@@ -99,11 +98,10 @@ def test_sparse_operator_evolve(time_axis, strategy):
                                                 add_noise=add_noise)
         block2_ovlp = block2_evolved.conj() @ mps_wfn
 
-        # Will get insufficent quantum numbers if noise term not added first
         pyblock_evolved = mps_wfn.tddmrg(time=t, hamiltonian=mpo, steps=steps,
                                          n_sub_sweeps=n_sub_sweeps, cutoff=0,
                                          block2=False)
         pyblock_ovlp = pyblock_evolved.conj() @ mps_wfn
 
+        assert np.isclose(fqe_ovlp, block2_ovlp)
         assert np.isclose(block2_ovlp, pyblock_ovlp)
-        assert np.isclose(fqe_ovlp, block2_ovlp)        
