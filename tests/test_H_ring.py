@@ -87,7 +87,7 @@ def test_H_ring_evolve(amount_H, method):
     if method == 'tddmrg':
         mps_evolved_2 = mps.time_evolve(
             total_time, mpo, steps=tddmrg_steps,
-            method=method, n_sub_sweeps=sub_sweeps)
+            method=method, n_sub_sweeps=sub_sweeps, cutoff=1E-18)
     elif method == 'rk4':
         mps_evolved_2 = mps.time_evolve(
             total_time, mpo, steps=rk4_steps, method=method)
