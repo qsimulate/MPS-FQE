@@ -224,8 +224,8 @@ class MPSWavefunction(MPS):
                steps: int = 1,
                n_sub_sweeps: int = 1,
                cached: bool = False,
-               cutoff: float = 1E-14,
-               block2: bool = False) -> "MPSWavefunction":
+               cutoff: float = 1E-16,
+               block2: bool = True) -> "MPSWavefunction":
         if block2:
             return self._block2_tddmrg(time=time, hamiltonian=hamiltonian,
                                        steps=steps, n_sub_sweeps=n_sub_sweeps,
@@ -425,7 +425,7 @@ class MPSWavefunction(MPS):
 
     def _block2_tddmrg(self, time: float, hamiltonian: MPS,
                        steps: int = 1, n_sub_sweeps: int = 1,
-                       cutoff: float = 1E-14, iprint: int = 0,
+                       cutoff: float = 1E-16, iprint: int = 0,
                        add_noise: bool = False, normalize_mps: bool = False):
         dt = time / steps
         bdim = self.opts.get("max_bond_dim", -1)
