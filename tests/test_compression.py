@@ -21,5 +21,9 @@ def test_propagation():
     mps = MPSWavefunction.from_fqe_wavefunction(fqe_wfn, max_bond_dim=mbd)
     # before_propagation
     assert mps.bond_dim == 64
-    mps_evolved = mps.time_evolve(10, mpo, steps=10, method="tddmrg")
-    assert mps_evolved.bond_dim == mbd
+    mps_evolved1 = mps.time_evolve(10, mpo, steps=10,
+                                   method="tddmrg", block2=False)
+    assert mps_evolved1.bond_dim == mbd
+    mps_evolved2 = mps.time_evolve(10, mpo, steps=10, method="tddmrg",
+                                   block2=True)
+    assert mps_evolved2.bond_dim == mbd

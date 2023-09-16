@@ -14,7 +14,7 @@ from pyblock3.algebra.mps import MPS, MPSInfo
 from pyblock3.algebra.mpe import MPE, CachedMPE
 from pyblock3.algebra.integrate import rk4_apply
 from pyblock3.algebra.symmetry import SZ
-from pyblock3.block2.io import MPSTools
+from pyblock3.block2.io import MPSTools, MPOTools
 from pyblock3.fcidump import FCIDUMP
 from pyblock3.hamiltonian import Hamiltonian
 from pyblock2.driver.core import DMRGDriver, SymmetryTypes
@@ -224,7 +224,12 @@ class MPSWavefunction(MPS):
                steps: int = 1,
                n_sub_sweeps: int = 1,
                cached: bool = False,
-               cutoff: float = 1E-14) -> "MPSWavefunction":
+               cutoff: float = 1E-16,
+               block2: bool = True) -> "MPSWavefunction":
+        if block2:
+            return self._block2_tddmrg(time=time, hamiltonian=hamiltonian,
+                                       steps=steps, n_sub_sweeps=n_sub_sweeps,
+                                       cutoff=cutoff, iprint=0)
         dt = time / steps
         mps = self.copy()
 
@@ -233,7 +238,7 @@ class MPSWavefunction(MPS):
         bdim = mps.opts.get("max_bond_dim", -1)
 
         mpe.tddmrg(bdims=[bdim], dt=-dt * 1j, iprint=0, n_sweeps=steps,
-                   normalize=True, n_sub_sweeps=n_sub_sweeps, cutoff=cutoff)
+                   normalize=False, n_sub_sweeps=n_sub_sweeps, cutoff=cutoff)
 
         mps += 0*self
         return type(self)(tensors=mps.tensors, opts=self.opts)
@@ -289,14 +294,15 @@ class MPSWavefunction(MPS):
                     n_sub_sweeps: int = 1,
                     method: str = "tddmrg",
                     cached: bool = False,
-                    cutoff: float = 1E-14) -> "MPSWavefunction":
+                    cutoff: float = 1E-16,
+                    block2: bool = True) -> "MPSWavefunction":
         if isinstance(hamiltonian, FqeHamiltonian):
             hamiltonian = mpo_from_fqe_hamiltonian(hamiltonian,
                                                    n_sites=self.n_sites)
         if method.lower() == "tddmrg":
             return self.tddmrg(time, hamiltonian, steps,
                                n_sub_sweeps=n_sub_sweeps,
-                               cached=cached, cutoff=cutoff)
+                               cached=cached, cutoff=cutoff, block2=block2)
         if method.lower() == "rk4":
             return self.rk4_apply(time, hamiltonian, steps)
         if method.lower() == "rk4-linear":
@@ -327,7 +333,7 @@ class MPSWavefunction(MPS):
         self.tensors[0] = sval*self.tensors[0]
 
     def rdm(self, string: str, brawfn: Optional["MPSWavefunction"] = None,
-            block2: bool = False) -> Union[complex, numpy.ndarray]:
+            block2: bool = True) -> Union[complex, numpy.ndarray]:
         # Get an individual rdm element
         if any(char.isdigit() for char in string):
             mpo = mpo_from_fqe_hamiltonian(
@@ -395,7 +401,7 @@ class MPSWavefunction(MPS):
             os.environ['TMPDIR'] = str(temp_dir)
             driver = DMRGDriver(scratch=os.environ['TMPDIR'],
                                 symm_type=SymmetryTypes.SZ | SymmetryTypes.CPX,
-                                n_threads=1)
+                                n_threads=3)
             driver.initialize_system(n_sites=self.n_sites,
                                      orb_sym=[0]*self.n_sites)
             b2mps = MPSTools.to_block2(self, save_dir=driver.scratch)
@@ -416,6 +422,49 @@ class MPSWavefunction(MPS):
                     + numpy.einsum("ijklmn->jiklnm", b2rdm[2]) \
                     + numpy.einsum("ijklmn->jkilmn", b2rdm[2])
         return rdm
+
+    def _block2_tddmrg(self, time: float, hamiltonian: MPS,
+                       steps: int = 1, n_sub_sweeps: int = 1,
+                       cutoff: float = 1E-16, iprint: int = 0,
+                       add_noise: bool = False, normalize_mps: bool = False):
+        dt = time / steps
+        bdim = self.opts.get("max_bond_dim", -1)
+        #Make MPS complex if not already and if doing real time propagation
+        if not numpy.iscomplexobj(self.tensors[0].data) and time.real != 0:
+            for i in range(self.n_sites):
+                self.tensors[i].data = self.tensors[i].data.astype(complex)
+
+        # Avoid Pade issue by adding a negligible noise term
+        if add_noise:
+            hamiltonian = MPS(tensors=hamiltonian.tensors,
+                              opts=hamiltonian.opts,
+                              const=1E-20)
+        if bdim == -1:
+            bdim = 4 ** ((self.n_sites + 1) // 2)
+        try:
+            n_threads = int(os.environ['OMP_NUM_THREADS'])
+        except KeyError:
+            # OMP_NUM_THREADS is not set
+            n_threads = 1
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            os.environ['TMPDIR'] = str(temp_dir)
+            driver = DMRGDriver(scratch=os.environ['TMPDIR'],
+                                symm_type=SymmetryTypes.SZ | SymmetryTypes.CPX,
+                                n_threads=n_threads)
+            driver.initialize_system(n_sites=self.n_sites,
+                                     orb_sym=[0]*self.n_sites)
+            b2mps = MPSTools.to_block2(self, save_dir=driver.scratch)
+            b2mpo = MPOTools.to_block2(hamiltonian, use_complex=True)
+
+            b2mps = driver.td_dmrg(b2mpo, b2mps, delta_t=dt*1j, n_steps=steps,
+                                   bond_dims=[bdim],
+                                   n_sub_sweeps=n_sub_sweeps,
+                                   cutoff=cutoff, iprint=iprint,
+                                   normalize_mps=normalize_mps)
+            mps = MPSTools.from_block2(b2mps).to_flat()
+
+        return type(self)(tensors=mps.tensors, opts=self.opts)
 
 
 def get_hf_mps(nele, sz, norbs, bdim,

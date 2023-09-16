@@ -42,7 +42,8 @@ def hamiltonian_from_molecule(molecule):
 
 
 @pytest.mark.parametrize("amount_H,method",
-                         itertools.product(range(2, 7), ["rk4-linear", "rk4", "tddmrg"]))
+                         itertools.product(range(2, 7),
+                                           ["rk4-linear", "rk4", "tddmrg"]))
 def test_H_ring_evolve(amount_H, method):
     molecule = get_H_ring_data(amount_H)
 
@@ -86,7 +87,7 @@ def test_H_ring_evolve(amount_H, method):
     if method == 'tddmrg':
         mps_evolved_2 = mps.time_evolve(
             total_time, mpo, steps=tddmrg_steps,
-            method=method, n_sub_sweeps=sub_sweeps)
+            method=method, n_sub_sweeps=sub_sweeps, cutoff=1E-18)
     elif method == 'rk4':
         mps_evolved_2 = mps.time_evolve(
             total_time, mpo, steps=rk4_steps, method=method)

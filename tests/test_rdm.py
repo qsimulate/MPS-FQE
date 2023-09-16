@@ -15,15 +15,15 @@ def test_rdm1(n_electrons, sz, n_orbitals):
     fqe_wfn.set_wfn(strategy='random')
     mps = MPSWavefunction.from_fqe_wavefunction(fqe_wfn=fqe_wfn)
     # Spatial orbitals
-    assert numpy.allclose(mps.rdm('i^ j'),
+    assert numpy.allclose(mps.rdm('i^ j', block2=False),
                           fqe_wfn.rdm('i^ j'),
                           atol=1e-12)
     # Spin orbitals
-    assert numpy.isclose(mps.rdm('0^ 2'),
+    assert numpy.isclose(mps.rdm('0^ 2', block2=False),
                          fqe_wfn.rdm('0^ 2'),
                          atol=1e-12)
 
-    assert numpy.isclose(mps.rdm('1^ 3'),
+    assert numpy.isclose(mps.rdm('1^ 3', block2=False),
                          fqe_wfn.rdm('1^ 3'),
                          atol=1e-12)
 
@@ -38,15 +38,15 @@ def test_rdm2(n_electrons, sz, n_orbitals):
     fqe_wfn.set_wfn(strategy='random')
     mps = MPSWavefunction.from_fqe_wavefunction(fqe_wfn=fqe_wfn)
 
-    assert numpy.isclose(mps.rdm('0^ 2^ 0 4'),
+    assert numpy.isclose(mps.rdm('0^ 2^ 0 4', block2=False),
                          fqe_wfn.rdm('0^ 2^ 0 4'),
                          atol=1e-12)
 
-    assert numpy.isclose(mps.rdm('1^ 3^ 3 5'),
+    assert numpy.isclose(mps.rdm('1^ 3^ 3 5', block2=False),
                          fqe_wfn.rdm('1^ 3^ 3 5'),
                          atol=1e-12)
 
-    assert numpy.allclose(mps.rdm('i^ j^ k l'),
+    assert numpy.allclose(mps.rdm('i^ j^ k l', block2=False),
                           fqe_wfn.rdm('i^ j^ k l'),
                           atol=1E-12)
 
@@ -57,10 +57,10 @@ def test_rdm3(n_electrons, sz, n_orbitals):
     fqe_wfn.set_wfn(strategy='random')
     mps = MPSWavefunction.from_fqe_wavefunction(fqe_wfn=fqe_wfn)
 
-    assert numpy.isclose(mps.rdm('0^ 2^ 3^ 0 4 1'),
+    assert numpy.isclose(mps.rdm('0^ 2^ 3^ 0 4 1', block2=False),
                          fqe_wfn.rdm('0^ 2^ 3^ 0 4 1'),
                          atol=1e-12)
 
-    assert numpy.allclose(mps.rdm('i^ j^ k^ l m n'),
+    assert numpy.allclose(mps.rdm('i^ j^ k^ l m n', block2=False),
                           fqe_wfn.rdm('i^ j^ k^ l m n'),
                           atol=1E-12)
