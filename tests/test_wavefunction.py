@@ -2,7 +2,7 @@ import fqe
 import numpy
 import pytest
 
-from mps_fqe.wavefunction import MPSWavefunction, get_hf_mps
+from mps_fqe.wavefunction import MPSWavefunction, get_hf_mps, get_random_mps
 from mps_fqe.hamiltonian import mpo_from_fqe_hamiltonian
 
 
@@ -39,6 +39,28 @@ def test_hf_wavefunction(nele, sz, norb):
 
     # only check up to a global phase
     assert abs(abs(fqe.vdot(out, wfn)) - 1) < tol
+
+
+@pytest.mark.parametrize("nele, sz, norb", [
+    (2, 0, 2), (2, 0, 4),
+    (1, 1, 2), (1, -1, 2),
+    (3, 1, 3), (3, -1, 3)
+])
+def test_random_wavefunction(nele, sz, norb):
+    """Test that a random MPS is created with the correct particle-number
+    and spin symmetry labels.
+    """
+    mps = get_random_mps(nele, sz, norb, bdim=50)
+    wfn = mps.to_fqe_wavefunction()
+
+    assert wfn.conserve_number()
+    assert wfn.conserve_spin()
+
+    sectors = list(wfn.sectors())
+    sector = sectors[0]
+    assert len(sectors) == 1
+    assert sector[0] == nele
+    assert sector[1] == sz
 
 
 def test_wavefunction_apply_diagonal():
