@@ -176,16 +176,15 @@ class MPSWavefunction(MPS):
                           max_bond_dim: Optional[int] = None,
                           cutoff: Optional[float] = None,
                           **kwargs) -> "MPSWavefunction":
-        # Get default pyblock opts if not provided
-        max_bond_dim = _default_pyblock_opts["max_bond_dim"] \
-            if max_bond_dim is None else max_bond_dim
-        cutoff = _default_pyblock_opts["cutoff"] \
-            if cutoff is None else cutoff
+        # Use MPS object pyblock opts if not provided
+        max_bond_dim = mps.opts["max_bond_dim"] if max_bond_dim is None \
+            else max_bond_dim
+        cutoff = mps.opts["cutoff"] if cutoff is None else cutoff
         pyblock_opts = {
             'max_bond_dim': max_bond_dim,
             'cutoff': cutoff
         }
-        # Get defaul fqe opts if not provided
+        # Get default fqe opts if not provided
         fqe_opts = {}
         for key, default in _default_fqe_opts.items():
             fqe_opts[key] = kwargs.get(key, default)
@@ -205,7 +204,8 @@ class MPSWavefunction(MPS):
         return self.n_sites
 
     def canonicalize(self, center) -> "MPSWavefunction":
-        return self.from_pyblock3_mps(super().canonicalize(center))
+        return self.from_pyblock3_mps(super().canonicalize(center),
+                                      **self.fqe_opts)
 
     def compress(self, **opts) -> Tuple["MPSWavefunction", float]:
         pyblock_opts, fqe_opts = self.current_options(**opts)
@@ -549,7 +549,8 @@ class MPSWavefunction(MPS):
                                    normalize_mps=normalize)
             mps = MPSTools.from_block2(b2mps).to_flat()
 
-        return type(self)(tensors=mps.tensors, opts=self.opts)
+        return type(self)(tensors=mps.tensors, const=self.const, opts=self.opts,
+                          dq=self.dq, fqe_opts=self.fqe_opts)
 
 
 def get_hf_mps(nele, sz, norbs, bdim,
