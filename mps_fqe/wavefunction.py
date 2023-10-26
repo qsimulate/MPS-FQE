@@ -208,8 +208,11 @@ class MPSWavefunction(MPS):
         return self.from_pyblock3_mps(super().canonicalize(center))
 
     def compress(self, **opts) -> Tuple["MPSWavefunction", float]:
-        mps, merror = super().compress(**opts)
-        return self.from_pyblock3_mps(mps, mps.max_bond_dim, mps.cutoff, **self.fqe_opts), merror
+        pyblock_opts, fqe_opts = self.current_options(**opts)
+        mps, merror = super().compress(**pyblock_opts)
+        return self.from_pyblock3_mps(mps, pyblock_opts["max_bond_dim"],
+                                      pyblock_opts["cutoff"],
+                                      **fqe_opts), merror
 
     def apply_linear(self,
                      mpo: MPS,
