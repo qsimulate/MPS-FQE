@@ -39,13 +39,21 @@ class MPSWavefunction(MPS):
     @classmethod
     def from_fqe_wavefunction(cls,
                               fqe_wfn: fqe.Wavefunction,
-                              max_bond_dim: int = -1,
-                              cutoff: float = 1E-12) \
+                              max_bond_dim: Optional[int] = None,
+                              cutoff: Optional[float] = None,
+                              **kwargs) \
             -> "MPSWavefunction":
+        # Get default pyblock options if not provided
+        max_bond_dim = _default_pyblock_opts["max_bond_dim"] \
+            if max_bond_dim is None else max_bond_dim
+        cutoff = _default_pyblock_opts["cutoff"] \
+            if cutoff is None else cutoff
         opts = {
-            "max_bond_dim": max_bond_dim,
-            "cutoff": cutoff
+            'max_bond_dim': max_bond_dim,
+            'cutoff': cutoff
         }
+        # Get default fqe options if not provided
+
         sectors = fqe_wfn.sectors()
 
         def get_fci_FlatSparseTensor(sectors):
@@ -143,15 +151,19 @@ class MPSWavefunction(MPS):
     @classmethod
     def from_pyblock3_mps(cls,
                           mps: MPS,
-                          max_bond_dim: int = -1,
-                          cutoff: float = 1E-12) -> "MPSWavefunction":
-        opts = {
+                          max_bond_dim: Optional[int] = None,
+                          cutoff: Optional[float] = None,
+                          **kwargs) -> "MPSWavefunction":
+        # Use MPS object pyblock opts if not provided
+        max_bond_dim = mps.opts["max_bond_dim"] if max_bond_dim is None \
+            else max_bond_dim
+        cutoff = mps.opts["cutoff"] if cutoff is None else cutoff
+        pyblock_opts = {
             'max_bond_dim': max_bond_dim,
             'cutoff': cutoff
         }
 
-        return cls(tensors=mps.tensors, opts=opts,
-                   dq=mps.dq, const=mps.const)
+        return cls(tensors=mps.tensors, opts=pyblock_opts)
 
     def print_wfn(self) -> None:
         for ii, tensor in enumerate(self.tensors):
@@ -169,8 +181,8 @@ class MPSWavefunction(MPS):
 
     def compress(self, **opts) -> Tuple["MPSWavefunction", float]:
         mps, merror = super().compress(**opts)
-
-        return self.from_pyblock3_mps(mps), merror
+        return self.from_pyblock3_mps(mps, opts["max_bond_dim"],
+                                      opts["cutoff"]), merror
 
     def apply_linear(self,
                      mpo: MPS,
@@ -198,7 +210,7 @@ class MPSWavefunction(MPS):
             assert mps == 0
             raise RuntimeError("Integer zero obtained when applying MPO")
 
-        return type(self)(tensors=mps.tensors, opts=mps.opts)
+        return type(self)(tensors=mps.tensors, opts=self.opts)
 
     def apply(self,
               hamiltonian: Union[FqeHamiltonian, MPS],
@@ -221,11 +233,13 @@ class MPSWavefunction(MPS):
     def tddmrg(self,
                time: float,
                hamiltonian: MPS,
-               steps: int = 1,
-               n_sub_sweeps: int = 1,
-               cached: bool = False,
-               cutoff: float = 1E-16,
-               block2: bool = True) -> "MPSWavefunction":
+               **kwargs) -> "MPSWavefunction":
+        # Use provided options or else use object's assigned options
+        block2 = kwargs.get("block2", _default_fqe_opts["block2"])
+        steps = kwargs.get("steps", _default_fqe_opts["steps"])
+        n_sub_sweeps = kwargs.get("n_sub_sweeps", _default_fqe_opts["n_sub_sweeps"])
+        cached = kwargs.get("cached", _default_fqe_opts["cached"])
+        cutoff = kwargs.get("cutoff", _default_pyblock_opts["cutoff"])
         if block2:
             return self._block2_tddmrg(time=time, hamiltonian=hamiltonian,
                                        steps=steps, n_sub_sweeps=n_sub_sweeps,
@@ -233,7 +247,7 @@ class MPSWavefunction(MPS):
         dt = time / steps
         mps = self.copy()
 
-        mpe = CachedMPE(mps, hamiltonian, mps) if cached \
+        mpe = CachedMPE(mps, hamiltonian, mps) if cached\
             else MPE(mps, hamiltonian, mps)
         bdim = mps.opts.get("max_bond_dim", -1)
 
@@ -244,21 +258,25 @@ class MPSWavefunction(MPS):
         return type(self)(tensors=mps.tensors, opts=self.opts)
 
     def rk4_apply(self, time: float, hamiltonian: MPS,
-                  steps: int = 1) -> "MPSWavefunction":
+                  **kwargs) -> "MPSWavefunction":
+        # Use provided options or else use object's assigned options
+        steps = kwargs.get("steps", _default_fqe_opts["steps"])
         dt = time / steps
         mps = self.copy()
 
         for ii in range(steps):
             mps = rk4_apply((-dt * 1j) * hamiltonian, mps)
 
-        return type(self)(tensors=mps.tensors, opts=mps.opts)
+        return type(self)(tensors=mps.tensors, const=self.const, opts=self.opts)
 
     def rk4_apply_linear(self,
                          time: float,
                          hamiltonian: MPS,
-                         steps: int = 1,
-                         n_sub_sweeps: int = 1,
-                         cutoff: float = 0.0) -> "MPSWavefunction":
+                         **kwargs) -> "MPSWavefunction":
+        # Use provided options or else use object's assigned options
+        steps = kwargs.get("steps", _default_fqe_opts["steps"])
+        n_sub_sweeps = kwargs.get("n_sub_sweeps", _default_fqe_opts["n_sub_sweeps"])
+        cutoff = kwargs.get("cutoff", _default_pyblock_opts["cutoff"])
         dt = -1.j * time / steps
         tmp = self.copy()
         mps = type(self)(tensors=tmp.tensors, opts=self.opts)
@@ -284,33 +302,29 @@ class MPSWavefunction(MPS):
             mps = mps + (k1 + 2*k2 + 2*k3 + k4)/6
             mps = type(self)(tensors=mps.tensors, opts=mps.opts)
 
-        return mps
+        return type(self)(tensors=mps.tensors, opts=self.opts)
 
     def time_evolve(self,
                     time: float,
                     hamiltonian: Union[FqeHamiltonian, MPS],
                     inplace: bool = False,
-                    steps: int = 1,
-                    n_sub_sweeps: int = 1,
-                    method: str = "tddmrg",
-                    cached: bool = False,
-                    cutoff: float = 1E-16,
-                    block2: bool = True) -> "MPSWavefunction":
+                    **kwargs) -> "MPSWavefunction":
+        # Use provided options or else use object's assigned options
+        method = kwargs.get("method", _default_fqe_opts["method"])
+        options = kwargs.copy()
+
         if isinstance(hamiltonian, FqeHamiltonian):
             hamiltonian = mpo_from_fqe_hamiltonian(hamiltonian,
                                                    n_sites=self.n_sites)
         if method.lower() == "tddmrg":
-            return self.tddmrg(time, hamiltonian, steps,
-                               n_sub_sweeps=n_sub_sweeps,
-                               cached=cached, cutoff=cutoff, block2=block2)
+            return self.tddmrg(time, hamiltonian, **options)
         if method.lower() == "rk4":
-            return self.rk4_apply(time, hamiltonian, steps)
+            return self.rk4_apply(time, hamiltonian, **options)
         if method.lower() == "rk4-linear":
-            return self.rk4_apply_linear(time, hamiltonian, steps=steps,
-                                         n_sub_sweeps=n_sub_sweeps,
-                                         cutoff=cutoff)
+            return self.rk4_apply_linear(time, hamiltonian, **options)
         raise ValueError(
-            f"method needs to be 'tddmrg' or 'rk4', '{method}' given")
+            "method needs to be 'tddmrg', 'rk4', or 'rk4-linear',"
+            f" '{method}' given")
 
     def expectationValue(self, hamiltonian: MPS,
                          brawfn: Optional["MPSWavefunction"] = None) -> float:
@@ -333,7 +347,8 @@ class MPSWavefunction(MPS):
         self.tensors[0] = sval*self.tensors[0]
 
     def rdm(self, string: str, brawfn: Optional["MPSWavefunction"] = None,
-            block2: bool = True) -> Union[complex, numpy.ndarray]:
+            block2: Optional[bool] = None) -> Union[complex, numpy.ndarray]:
+        block2 = _default_fqe_opts["block2"] if block2 is None else block2
         # Get an individual rdm element
         if any(char.isdigit() for char in string):
             mpo = mpo_from_fqe_hamiltonian(
@@ -423,13 +438,20 @@ class MPSWavefunction(MPS):
                     + numpy.einsum("ijklmn->jkilmn", b2rdm[2])
         return rdm
 
-    def _block2_tddmrg(self, time: float, hamiltonian: MPS,
-                       steps: int = 1, n_sub_sweeps: int = 1,
-                       cutoff: float = 1E-16, iprint: int = 0,
-                       add_noise: bool = False, normalize_mps: bool = False):
+    def _block2_tddmrg(self, time: float, hamiltonian: MPS, **kwargs):
+        # Gather all options
+        steps = kwargs.get("steps", _default_fqe_opts["steps"])
+        n_sub_sweeps = kwargs.get("n_sub_sweeps", _default_fqe_opts["n_sub_sweeps"])
+        add_noise = kwargs.get("add_noise", _default_fqe_opts["add_noise"])
+
+        bdim = self.opts["max_bond_dim"]
+        cutoff = kwargs.get("cutoff", _default_pyblock_opts["cutoff"])
+
+        iprint = kwargs.get("iprint", 0)
+        normalize = kwargs.get("normalize", False)
+
         dt = time / steps
-        bdim = self.opts.get("max_bond_dim", -1)
-        #Make MPS complex if not already and if doing real time propagation
+        # Make MPS complex if not already and if doing real time propagation
         if not numpy.iscomplexobj(self.tensors[0].data) and time.real != 0:
             for i in range(self.n_sites):
                 self.tensors[i].data = self.tensors[i].data.astype(complex)
@@ -461,7 +483,7 @@ class MPSWavefunction(MPS):
                                    bond_dims=[bdim],
                                    n_sub_sweeps=n_sub_sweeps,
                                    cutoff=cutoff, iprint=iprint,
-                                   normalize_mps=normalize_mps)
+                                   normalize_mps=normalize)
             mps = MPSTools.from_block2(b2mps).to_flat()
 
         return type(self)(tensors=mps.tensors, opts=self.opts)
@@ -542,3 +564,19 @@ def get_random_mps(nele, sz, norbs, bdim,
     mps_wfn = MPS.random(mps_info)
     return MPSWavefunction.from_pyblock3_mps(mps_wfn, max_bond_dim=bdim,
                                              cutoff=cutoff)
+
+
+_default_fqe_opts = {
+    "steps": 1,
+    "n_sub_sweeps": 1,
+    "method": "tddmrg",
+    "cached": False,
+    "block2": True,
+    "add_noise": False
+}
+
+
+_default_pyblock_opts = {
+    "cutoff": 1e-14,
+    "max_bond_dim": -1
+}
