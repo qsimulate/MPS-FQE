@@ -163,8 +163,7 @@ class MPSWavefunction(MPS):
             'cutoff': cutoff
         }
 
-        return cls(tensors=mps.tensors, opts=pyblock_opts,
-                   dq=mps.dq, const=mps.const)
+        return cls(tensors=mps.tensors, opts=pyblock_opts)
 
     def print_wfn(self) -> None:
         for ii, tensor in enumerate(self.tensors):
@@ -199,8 +198,7 @@ class MPSWavefunction(MPS):
             bdims=bdims, noises=noises,
             cg_thrds=None, iprint=0, n_sweeps=n_sweeps, tol=cutoff)
         bra += mpo.const*mps
-        return type(self)(tensors=bra.tensors, const=self.const,
-                          opts=self.opts, dq=self.dq)
+        return type(self)(tensors=bra.tensors, opts=self.opts)
 
     def apply_exact(self, mpo: MPS) -> "MPSWavefunction":
         mps = self.copy()
@@ -212,8 +210,7 @@ class MPSWavefunction(MPS):
             assert mps == 0
             raise RuntimeError("Integer zero obtained when applying MPO")
 
-        return type(self)(tensors=mps.tensors, const=self.const,
-                          opts=self.opts, dq=self.dq)
+        return type(self)(tensors=mps.tensors, opts=self.opts)
 
     def apply(self,
               hamiltonian: Union[FqeHamiltonian, MPS],
@@ -258,8 +255,7 @@ class MPSWavefunction(MPS):
                    normalize=False, n_sub_sweeps=n_sub_sweeps, cutoff=cutoff)
 
         mps += 0*self
-        return type(self)(tensors=mps.tensors, const=self.const, opts=self.opts,
-                          dq=self.dq)
+        return type(self)(tensors=mps.tensors, opts=self.opts)
 
     def rk4_apply(self, time: float, hamiltonian: MPS,
                   **kwargs) -> "MPSWavefunction":
@@ -283,7 +279,7 @@ class MPSWavefunction(MPS):
         cutoff = kwargs.get("cutoff", _default_pyblock_opts["cutoff"])
         dt = -1.j * time / steps
         tmp = self.copy()
-        mps = type(self)(tensors=tmp.tensors, const=self.const, opts=self.opts, dq=self.dq)
+        mps = type(self)(tensors=tmp.tensors, opts=self.opts)
         for ii in range(steps):
             k1 = dt * mps.apply_linear(
                 hamiltonian, n_sweeps=n_sub_sweeps, cutoff=cutoff)
@@ -306,8 +302,7 @@ class MPSWavefunction(MPS):
             mps = mps + (k1 + 2*k2 + 2*k3 + k4)/6
             mps = type(self)(tensors=mps.tensors, opts=mps.opts)
 
-        return type(self)(tensors=mps.tensors, const=self.const, opts=self.opts,
-                          dq=self.dq)
+        return type(self)(tensors=mps.tensors, opts=self.opts)
 
     def time_evolve(self,
                     time: float,
@@ -491,8 +486,7 @@ class MPSWavefunction(MPS):
                                    normalize_mps=normalize)
             mps = MPSTools.from_block2(b2mps).to_flat()
 
-        return type(self)(tensors=mps.tensors, const=self.const, opts=self.opts,
-                          dq=self.dq)
+        return type(self)(tensors=mps.tensors, opts=self.opts)
 
 
 def get_hf_mps(nele, sz, norbs, bdim,
