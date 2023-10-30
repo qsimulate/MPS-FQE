@@ -31,11 +31,9 @@ def test_hf_wavefunction(nele, sz, norb):
 
     wfn = fqe.Wavefunction([[nele, sz, norb]])
     wfn.set_wfn(strategy="hartree-fock")
-    # wfn.print_wfn()
 
     mps = get_hf_mps(nele, sz, norb, bdim=50)
     out = mps.to_fqe_wavefunction()
-    # out.print_wfn()
 
     # only check up to a global phase
     assert abs(abs(fqe.vdot(out, wfn)) - 1) < tol

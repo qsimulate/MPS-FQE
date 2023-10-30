@@ -24,6 +24,30 @@ def mpo_from_fqe_hamiltonian(fqe_ham: FqeHamiltonian,
                              flat: bool = True,
                              cutoff: float = 1E-12,
                              max_bond_dim: int = -1) -> "MPS":
+    """Generate an MPO from an FQEHamiltonian object.
+
+    Args:
+        fqe_ham (FQEHamiltonian): Hamiltonian to be converted to an MPO.
+
+        n_sites (int): Number of sites (optional).
+
+        pg (str): Point group symmetry.
+
+        flat (bool): Whether to use the pyblock3 flat functionality.
+
+        cutoff (float): Threshold for discarded values.
+
+        max_bond_dim (int): Maximum bond dimension allowed for MPO.
+
+    Returns:
+        hamiltonian (MPS): The MPO representation of the Hamiltonian operator.
+
+    Raises:
+        ValueError: If n_sites argument is not provided while trying to \
+            convert a fqe.sparse_hamiltonian.SparseHamiltonian to an MPO.
+
+        TypeError: If the provided type of FQEHamiltonian is not implemented.
+    """
     if n_sites is None:
         if isinstance(fqe_ham, sparse_hamiltonian.SparseHamiltonian):
             raise ValueError("Must provide n_sites for sparse Hamiltonian")
@@ -48,6 +72,22 @@ def get_sparse_mpo(fqe_ham: FqeHamiltonian,
                    flat: bool = True,
                    cutoff: float = 1E-12,
                    max_bond_dim: int = -1) -> "MPS":
+    """Generate an MPO from a fqe.sparse_hamiltonian.SparseHamiltonian.
+
+    Args:
+        fqe_ham (SparseHamiltonian): Hamiltonian to be converted to an MPO.
+
+        fd (FCIDUMP): FCIDUMP object containing properties of the Hamiltonian.
+
+        flat (bool): Whether to use the pyblock3 flat functionality.
+
+        cutoff (float): Threshold for discarded values.
+
+        max_bond_dim (int): Maximum bond dimension allowed for MPO.
+
+    Returns:
+        hamiltonian (MPS): The MPO representation of the Hamiltonian operator.
+    """
     # Generate the sparse Hamiltonian MPO
     hamil = Hamiltonian(fd, flat=flat)
 
@@ -82,6 +122,22 @@ def get_restricted_mpo(fqe_ham: FqeHamiltonian,
                        flat: bool = True,
                        cutoff: float = 1E-12,
                        max_bond_dim: int = -1) -> "MPS":
+    """Generate an MPO from a fqe.restricted_hamiltonian.RestrictedHamiltonian.
+
+    Args:
+        fqe_ham (RestrictedHamiltonian): Hamiltonian to be converted to an MPO.
+
+        fd (FCIDUMP): FCIDUMP object containing properties of the Hamiltonian.
+
+        flat (bool): Whether to use the pyblock3 flat functionality.
+
+        cutoff (float): Threshold for discarded values.
+
+        max_bond_dim (int): Maximum bond dimension allowed for MPO.
+
+    Returns:
+        hamiltonian (MPS): The MPO representation of the Hamiltonian operator.
+    """
     # Generate the restricted hamiltonian MPO
     fd.h1e = fqe_ham.tensors()[0]
     ntensor = len(fqe_ham.tensors())
@@ -115,6 +171,22 @@ def get_diagonal_coulomb_mpo(fqe_ham: FqeHamiltonian,
                              flat: bool = True,
                              cutoff: float = 1E-12,
                              max_bond_dim: int = -1) -> "MPS":
+    """Generate an MPO from a fqe.diagonal_coulomb.DiagonalCoulomb.
+
+    Args:
+        fqe_ham (DiagonalCoulomb): Hamiltonian to be converted to an MPO.
+
+        fd (FCIDUMP): FCIDUMP object containing properties of the Hamiltonian.
+
+        flat (bool): Whether to use the pyblock3 flat functionality.
+
+        cutoff (float): Threshold for discarded values.
+
+        max_bond_dim (int): Maximum bond dimension allowed for MPO.
+
+    Returns:
+        hamiltonian (MPS): The MPO representation of the Hamiltonian operator.
+    """
     # Generate the diagonal coulomb MPO
     hamil = Hamiltonian(fd, flat=flat)
 
@@ -146,6 +218,22 @@ def get_diagonal_mpo(fqe_ham: FqeHamiltonian,
                      flat: bool = True,
                      cutoff: float = 1E-12,
                      max_bond_dim: int = -1) -> "MPS":
+    """Generate an MPO from a fqe.diagonal_hamiltonian.Diagonal.
+
+    Args:
+        fqe_ham (Diagonal): Hamiltonian to be converted to an MPO.
+
+        fd (FCIDUMP): FCIDUMP object containing properties of the Hamiltonian.
+
+        flat (bool): Whether to use the pyblock3 flat functionality.
+
+        cutoff (float): Threshold for discarded values.
+
+        max_bond_dim (int): Maximum bond dimension allowed for MPO.
+
+    Returns:
+        hamiltonian (MPS): The MPO representation of the Hamiltonian operator.
+    """
     # Generate the diagonal MPO
     hamil = Hamiltonian(fd, flat=flat)
     t = fqe_ham.diag_values()
