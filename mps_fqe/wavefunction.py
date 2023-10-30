@@ -538,6 +538,34 @@ def get_hf_mps(nele, sz, norbs, bdim,
                                              cutoff=cutoff)
 
 
+def get_random_mps(nele, sz, norbs, bdim,
+                   e0: float = 0.0,
+                   cutoff: float = 0.0):
+    if (nele + abs(sz)) // 2 > norbs:
+        raise ValueError(
+            f"Electron number is too large (nele = {nele}, norb = {norbs})")
+    if sz % 2 != nele % 2:
+        raise ValueError(
+            f"Spin (sz = {sz}) is incompatible with nele = {nele}")
+
+    nsocc = abs(sz)
+    ndocc = (nele - nsocc) // 2
+    nvirt = norbs - nsocc - ndocc
+    assert nvirt >= 0
+
+    fd = FCIDUMP(pg='c1',
+                 n_sites=norbs,
+                 const_e=e0,
+                 n_elec=nele,
+                 twos=sz)
+    hamil = Hamiltonian(fd, flat=True)
+    mps_info = MPSInfo(hamil.n_sites, hamil.vacuum, hamil.target, hamil.basis)
+    mps_info.set_bond_dimension(bdim)
+    mps_wfn = MPS.random(mps_info)
+    return MPSWavefunction.from_pyblock3_mps(mps_wfn, max_bond_dim=bdim,
+                                             cutoff=cutoff)
+
+
 _default_fqe_opts = {
     "steps": 1,
     "n_sub_sweeps": 1,
