@@ -552,7 +552,7 @@ class MPSWavefunction(MPS):
             block2 (bool): Whether or not to use the block2 driver (optional).
 
         Returns:
-            rdm (numpy.array): The reduced density matrix.
+            rdm (numpy.ndarray): The reduced density matrix.
 
         Raises:
             ValueError: If provided string corresponds to beyond a full 3pdm.

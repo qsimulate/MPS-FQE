@@ -13,7 +13,7 @@ def fqe_sign_change(fqedata: FqeData) -> numpy.ndarray:
         fqedata (FqeData): Openfermion-FQE FqeData object.
 
     Returns:
-        fermionic_sign (numpy.array): Sign changes for states.
+        fermionic_sign (numpy.ndarray): Sign changes for states.
     """
     ndim = fqedata.norb()
     alpha_str = fqedata.get_fcigraph().string_alpha_all().astype(int)
@@ -175,16 +175,16 @@ def apply_fiedler_ordering(h1, h2):
     """Reorder orbitals using the Fiedler method.
 
     Args:
-        h1 (numpy.array): One-electron intergral array.
+        h1 (numpy.ndarray): One-electron intergral array.
 
-        h2 (numpy.array): Two-electron intergral array.
+        h2 (numpy.ndarray): Two-electron intergral array.
 
     Returns:
-        h1new (numpy.array): Re-ordered one-electron intergral array.
+        h1new (numpy.ndarray): Re-ordered one-electron intergral array.
 
-        h2new (numpy.array): Re-ordered two-electron intergral array.
+        h2new (numpy.ndarray): Re-ordered two-electron intergral array.
 
-        order (numpy.array): Order of orbitals.
+        order (numpy.ndarray): Order of orbitals.
     """
 
     def fiedler_order(mat):
