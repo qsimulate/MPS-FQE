@@ -7,6 +7,14 @@ from pyblock3.fcidump import FCIDUMP
 
 
 def fqe_sign_change(fqedata: FqeData) -> numpy.ndarray:
+    """Function to return the fermionic sign change.
+
+    Args:
+        fqedata (FqeData): Openfermion-FQE FqeData object.
+
+    Returns:
+        fermionic_sign (numpy.ndarray): Sign changes for states.
+    """
     ndim = fqedata.norb()
     alpha_str = fqedata.get_fcigraph().string_alpha_all().astype(int)
     beta_str = fqedata.get_fcigraph().string_beta_all().astype(int)
@@ -24,6 +32,22 @@ def fqe_sign_change(fqedata: FqeData) -> numpy.ndarray:
 
 def one_body_projection_mpo(isite: int, jsite: int, n_sites: int,
                             flat: bool = True, spinfree: bool = True):
+    """Function to return a one body projection operator MPO, |isite><jsite|.
+
+    Args:
+        isite (int): Site index for the ket.
+
+        jsite (int): Site index for the bra.
+
+        n_sites (int): Total number of spatial sites.
+
+        flat (bool): Whether to use pyblock3 flat machinery.
+
+        spinfree (bool): Whether to sum over spin orbitals at provided sites.
+
+    Returns:
+        projection_operator (MPS): MPO for the one-body projection operator.
+    """
     fd = FCIDUMP(pg="c1", n_sites=n_sites)
 
     def gen_spinfree_terms(n_sites, c, d):
@@ -51,6 +75,27 @@ def one_body_projection_mpo(isite: int, jsite: int, n_sites: int,
 def two_body_projection_mpo(isite: int, jsite: int, ksite: int, lsite: int,
                             n_sites: int, flat: bool = True,
                             spinfree: bool = True):
+    """Function to return a two body projection operator MPO, \
+    |isite, jsite><ksite, lsite|.
+
+    Args:
+        isite (int): First site index for the ket.
+
+        jsite (int): Second site index for the ket.
+
+        ksite (int): First site index for the bra.
+
+        lsite (int): Second site index for the bra.
+
+        n_sites (int): Total number of spatial sites.
+
+        flat (bool): Whether to use pyblock3 flat machinery.
+
+        spinfree (bool): Whether to sum over spin orbitals at provided sites.
+
+    Returns:
+        projection_operator (MPS): MPO for the two-body projection operator.
+    """
     fd = FCIDUMP(pg="c1", n_sites=n_sites)
 
     def gen_spin_terms(n_sites, c, d):
@@ -78,6 +123,31 @@ def three_body_projection_mpo(isite: int, jsite: int, ksite: int,
                               lsite: int, msite: int, nsite: int,
                               n_sites: int, flat: bool = True,
                               spinfree: bool = True):
+    """Function to return a two body projection operator MPO, \
+    |isite, jsite><ksite, lsite|.
+
+    Args:
+        isite (int): First site index for the ket.
+
+        jsite (int): Second site index for the ket.
+
+        ksite (int): Third site index for the ket.
+
+        lsite (int): First site index for the bra.
+
+        msite (int): Second site index for the bra.
+
+        nsite (int): Third site index for the bra.
+
+        n_sites (int): Total number of spatial sites.
+
+        flat (bool): Whether to use pyblock3 flat machinery.
+
+        spinfree (bool): Whether to sum over spin orbitals at provided sites.
+
+    Returns:
+        projection_operator (MPS): MPO for the three-body projection operator.
+    """
     fd = FCIDUMP(pg="c1", n_sites=n_sites)
 
     def gen_spin_terms(n_sites, c, d):
@@ -102,7 +172,20 @@ def three_body_projection_mpo(isite: int, jsite: int, ksite: int,
 
 
 def apply_fiedler_ordering(h1, h2):
-    """Reorder orbitals using the Fiedler method."""
+    """Reorder orbitals using the Fiedler method.
+
+    Args:
+        h1 (numpy.ndarray): One-electron intergral array.
+
+        h2 (numpy.ndarray): Two-electron intergral array.
+
+    Returns:
+        h1new (numpy.ndarray): Re-ordered one-electron intergral array.
+
+        h2new (numpy.ndarray): Re-ordered two-electron intergral array.
+
+        order (numpy.ndarray): Order of orbitals.
+    """
 
     def fiedler_order(mat):
         n = mat.shape[0]

@@ -36,13 +36,36 @@ def decompose_mps(fci_tensor: FlatSparseTensor) -> List[FlatSparseTensor]:
 
 
 class MPSWavefunction(MPS):
+    """MPSWavefunction is the central object for manipulation in \
+    MPS-FQE. It is a 1-dimensional tensor network representation \
+    of openfermion-FQE Wavefunction object to allow for approximate \
+    description of large Fermionic systems.
+    """
+
     @classmethod
     def from_fqe_wavefunction(cls,
                               fqe_wfn: fqe.Wavefunction,
                               max_bond_dim: Optional[int] = None,
-                              cutoff: Optional[float] = None,
-                              **kwargs) \
-            -> "MPSWavefunction":
+                              cutoff: Optional[float] = None
+                              ) -> "MPSWavefunction":
+        """Construct an MPSWavefunction object from an openfermion-FQE \
+        Wavefunction object. This classmethod iterates through the different \
+        sectors of the Wavefunction object to obtain a list of \
+        FlatSparseTensor objects for constructing the MPSWavefunction.
+
+        Args:
+            fqe_wfn (fqe.Wavefunction): an openfermion-FQE Wavefunction object.
+
+            max_bond_dim (int): maximum bond dimension used to approximate \
+                the MPS (optional, default -1).
+
+            cutoff (float): threshold for discarded weights \
+                (optional, default 1e-14).
+
+        Returns:
+            wfn (MPSWavefunction): an MPS representation of the \
+                fqe.Wavefunction object.
+        """
         # Get default pyblock options if not provided
         max_bond_dim = _default_pyblock_opts["max_bond_dim"] \
             if max_bond_dim is None else max_bond_dim
@@ -119,8 +142,16 @@ class MPSWavefunction(MPS):
     def to_fqe_wavefunction(self,
                             broken: Optional[Union[List[str], str]] = None)\
             -> fqe.Wavefunction:
-        """This is quite a memory intensive function.
-        Will fail for all but the smallest MPS's."""
+        """Construct an fqe.Wavefunction object from the MPSWavefunction \
+        object. This method is memory intensive, and will fail for anything \
+        other than small systems.
+
+        Args:
+            broken (str): string of list of strings of broken symmetries.
+
+        Returns:
+            fqe_wfn (fqe.Wavefunction): an openfermion-FQE wavefunction.
+        """
         fci_tensor = self.get_FCITensor()
         norb = fci_tensor.ndim - 2
         sectors = tuple(map(SZ.from_flat, set(fci_tensor.q_labels[:, -1])))
@@ -152,20 +183,37 @@ class MPSWavefunction(MPS):
     def from_pyblock3_mps(cls,
                           mps: MPS,
                           max_bond_dim: Optional[int] = None,
-                          cutoff: Optional[float] = None,
-                          **kwargs) -> "MPSWavefunction":
+                          cutoff: Optional[float] = None) -> "MPSWavefunction":
+        """Construct an MPSWavefunction object from a pyblock3 MPS object. \
+        If optional arguments are not provided, the MPSWavefunction object \
+        will inheret the necessary options from the pyblock3 MPS object.
+
+        Args:
+            mps (MPS): an openfermion-FQE Wavefunction object.
+
+            max_bond_dim (int): maximum bond dimension used to approximate \
+                the MPS (optional, default inhereted from MPS).
+
+            cutoff (float): threshold for discarded weights \
+                (optional, default inhereted from MPS).
+
+        Returns:
+            wfn (MPSWavefunction): an MPSWavefunction object.
+        """
         # Use MPS object pyblock opts if not provided
         max_bond_dim = mps.opts["max_bond_dim"] if max_bond_dim is None \
             else max_bond_dim
         cutoff = mps.opts["cutoff"] if cutoff is None else cutoff
-        pyblock_opts = {
+        opts = {
             'max_bond_dim': max_bond_dim,
             'cutoff': cutoff
         }
 
-        return cls(tensors=mps.tensors, opts=pyblock_opts)
+        return cls(tensors=mps.tensors, opts=opts)
 
     def print_wfn(self) -> None:
+        """Print the current wavefunction tensors and the bond dimensions.
+        """
         for ii, tensor in enumerate(self.tensors):
             print(f"TENSOR {ii}")
             print(tensor)
@@ -174,12 +222,22 @@ class MPSWavefunction(MPS):
         print(self.show_bond_dims())
 
     def norb(self) -> int:
+        """Return the number of spatial orbitals that underly the \
+        wavefunction's state space.
+
+        Returns:
+            n_sites (int): number of spatial orbitals.
+        """
         return self.n_sites
 
     def canonicalize(self, center) -> "MPSWavefunction":
+        """
+        """
         return self.from_pyblock3_mps(super().canonicalize(center))
 
     def compress(self, **opts) -> Tuple["MPSWavefunction", float]:
+        """
+        """
         mps, merror = super().compress(**opts)
         return self.from_pyblock3_mps(mps, opts["max_bond_dim"],
                                       opts["cutoff"]), merror
@@ -188,6 +246,21 @@ class MPSWavefunction(MPS):
                      mpo: MPS,
                      n_sweeps: int = 4,
                      cutoff: float = 0.0) -> "MPSWavefunction":
+        """Apply an MPO to the MPSWavefunction object using an approximate \
+        sweep algorithm.
+
+        Args:
+            mpo (MPS): a matrix product operator.
+
+            n_sweeps (int): number of sweeps used to approximately apply the \
+                mpo to the MPSWavefunction.
+
+            cutoff (float): cutoff used during the sweep algorithm.
+
+        Returns:
+            wfn (MPSWavefunction): the resulting MPSWavefunction after the \
+                mpo application.
+        """
         bra = self.copy()
         mps = self.copy()
         bdim = self.opts['max_bond_dim']
@@ -201,6 +274,16 @@ class MPSWavefunction(MPS):
         return type(self)(tensors=bra.tensors, opts=self.opts)
 
     def apply_exact(self, mpo: MPS) -> "MPSWavefunction":
+        """Apply an MPO to the MPSWavefunction object using exact \
+        MPO-MPS contraction.
+
+        Args:
+            mpo (MPS): a matrix product operator.
+
+        Returns:
+            wfn (MPSWavefunction): the resulting MPSWavefunction after the \
+                mpo application.
+        """
         mps = self.copy()
         mps = mpo @ mps + 0*mps
 
@@ -215,6 +298,22 @@ class MPSWavefunction(MPS):
     def apply(self,
               hamiltonian: Union[FqeHamiltonian, MPS],
               exact: bool = True) -> "MPSWavefunction":
+        """Apply an MPO to the MPSWavefunction object.
+
+        Args:
+            hamiltonian (MPS or FqeHamiltonian): Operator to be applied.
+
+            exact (bool): Whether to apply the operator exactly or via \
+                an approximate sweep algorithm.
+
+        Returns:
+            wfn (MPSWavefunction): Resulting MPSWavefunction after \
+                applying the operator.
+
+        Raises:
+            ValueError: If there is a mismatch between the number of sites \
+                that define the MPSWavefunction and the MPO.
+        """
         if isinstance(hamiltonian, FqeHamiltonian):
             hamiltonian = mpo_from_fqe_hamiltonian(hamiltonian,
                                                    n_sites=self.n_sites)
@@ -228,16 +327,35 @@ class MPSWavefunction(MPS):
         return self.apply_linear(hamiltonian)
 
     def transform(self):
+        """Not currently implemented.
+        """
         pass
 
     def tddmrg(self,
                time: float,
                hamiltonian: MPS,
                **kwargs) -> "MPSWavefunction":
+        """Perform real or imaginary time evolution under the influence of \
+        the provided hamiltonian with TD-DMRG propagation. Details of the \
+        propagation are controlled by keyword arguments. Relevant keyword \
+        arguments and their defaults "steps": 1, "n_sub_sweeps": 1, \
+        "cached": False, "block2": True, "add_noise": False, "cutoff": 1e-14
+
+        Args:
+            time (float): The total time of propagation.
+
+            hamiltonian (MPS): MPO used to generate dynamics.
+
+            **kwargs (keyword arguments): Options to dictate propagation.
+
+        Returns:
+            wfn (MPSWavefunction): The time-evolved MPSWavefunction.
+        """
         # Use provided options or else use object's assigned options
         block2 = kwargs.get("block2", _default_fqe_opts["block2"])
         steps = kwargs.get("steps", _default_fqe_opts["steps"])
-        n_sub_sweeps = kwargs.get("n_sub_sweeps", _default_fqe_opts["n_sub_sweeps"])
+        n_sub_sweeps = kwargs.get("n_sub_sweeps",
+                                  _default_fqe_opts["n_sub_sweeps"])
         cached = kwargs.get("cached", _default_fqe_opts["cached"])
         cutoff = kwargs.get("cutoff", _default_pyblock_opts["cutoff"])
         if block2:
@@ -259,6 +377,21 @@ class MPSWavefunction(MPS):
 
     def rk4_apply(self, time: float, hamiltonian: MPS,
                   **kwargs) -> "MPSWavefunction":
+        """Perform real or imaginary time evolution under the influence of \
+        the provided hamiltonian with RK4 propagation. Details of the \
+        propagation are controlled by keyword arguments. Relevant keyword \
+        arguments and their defaults "steps": 1.
+
+        Args:
+            time (float): The total time of propagation.
+
+            hamiltonian (MPS): MPO used to generate dynamics.
+
+            **kwargs (keyword arguments): Options to dictate propagation.
+
+        Returns:
+            wfn (MPSWavefunction): The time-evolved MPSWavefunction.
+        """
         # Use provided options or else use object's assigned options
         steps = kwargs.get("steps", _default_fqe_opts["steps"])
         dt = time / steps
@@ -267,15 +400,33 @@ class MPSWavefunction(MPS):
         for ii in range(steps):
             mps = rk4_apply((-dt * 1j) * hamiltonian, mps)
 
-        return type(self)(tensors=mps.tensors, const=self.const, opts=self.opts)
+        return type(self)(tensors=mps.tensors, const=self.const,
+                          opts=self.opts)
 
     def rk4_apply_linear(self,
                          time: float,
                          hamiltonian: MPS,
                          **kwargs) -> "MPSWavefunction":
+        """Perform real or imaginary time evolution under the influence of \
+        the provided hamiltonian with a linear sweep algorithm approximation \
+        to RK4 propagation. Details of the propagation are controlled \
+        by keyword arguments. Relevant keyword arguments and their defaults \
+        "steps": 1, "n_sub_sweeps": 1, "cutoff": 1e-14.
+
+        Args:
+            time (float): The total time of propagation.
+
+            hamiltonian (MPS): MPO used to generate dynamics.
+
+            **kwargs (keyword arguments): Options to dictate propagation.
+
+        Returns:
+            wfn (MPSWavefunction): The time-evolved MPSWavefunction.
+        """
         # Use provided options or else use object's assigned options
         steps = kwargs.get("steps", _default_fqe_opts["steps"])
-        n_sub_sweeps = kwargs.get("n_sub_sweeps", _default_fqe_opts["n_sub_sweeps"])
+        n_sub_sweeps = kwargs.get("n_sub_sweeps",
+                                  _default_fqe_opts["n_sub_sweeps"])
         cutoff = kwargs.get("cutoff", _default_pyblock_opts["cutoff"])
         dt = -1.j * time / steps
         tmp = self.copy()
@@ -309,7 +460,30 @@ class MPSWavefunction(MPS):
                     hamiltonian: Union[FqeHamiltonian, MPS],
                     inplace: bool = False,
                     **kwargs) -> "MPSWavefunction":
-        # Use provided options or else use object's assigned options
+        """Perform real or imaginary time evolution under the influence of \
+        the provided hamiltonian. Details of the propagation are controlled \
+        by keyword arguments. Relevant keyword arguments and their defaults \
+        "steps": 1, "n_sub_sweeps": 1, "method": "tddmrg", "cached": False, \
+        "block2": True, "add_noise": False.
+
+        Args:
+            time (float): The total time of propagation.
+
+            hamiltonian (MPS or FqeHamiltonian): Operator used to generate \
+                dynamics.
+
+            inplace (bool): Not implemented with the MPS backend.
+
+            **kwargs (keyword arguments): Options to dictate propagation.
+
+        Returns:
+            wfn (MPSWavefunction): The time-evolved MPSWavefunction.
+
+        Raises:
+            ValueError: If provided keyword method does not refer to an \
+                implemented propagation method.
+        """
+        # Use provided options or else use default options
         method = kwargs.get("method", _default_fqe_opts["method"])
         options = kwargs.copy()
 
@@ -326,8 +500,20 @@ class MPSWavefunction(MPS):
             "method needs to be 'tddmrg', 'rk4', or 'rk4-linear',"
             f" '{method}' given")
 
-    def expectationValue(self, hamiltonian: MPS,
+    def expectationValue(self, hamiltonian: Union[MPS, FqeHamiltonian],
                          brawfn: Optional["MPSWavefunction"] = None) -> float:
+        """Compute the expectation value of an operator.
+
+        Args:
+            hamiltonian (MPS or FqeHamiltonian): Operator whose expectation \
+                value is measured.
+
+            brawfn (MPSWavefunction): State used to compute off-diagonal \
+                operator matrix elements (optional).
+
+        Returns:
+            expectation_value (complex): computed expectation value.
+        """
         bra = self if brawfn is None else brawfn
         if isinstance(hamiltonian, FqeHamiltonian):
             hamiltonian = mpo_from_fqe_hamiltonian(hamiltonian,
@@ -335,19 +521,42 @@ class MPSWavefunction(MPS):
         return MPE(bra, hamiltonian, self)[0:2].expectation
 
     def get_FCITensor(self) -> FlatSparseTensor:
+        """Get the full CI tensor description of the wave function.
+
+        Returns:
+            fci_tensor (FlatSparseTensor): Full CI tensor
+        """
         return functools.reduce(lambda x, y: numpy.tensordot(x, y, axes=1),
                                 self.tensors)
 
     def scale(self, sval: complex) -> None:
-        """ Scale each configuration space by the value sval
+        """ Scale each configuration space by the value sval.
 
         Args:
-            sval (complex): value to scale by
+            sval (complex): Value to scale by.
         """
         self.tensors[0] = sval*self.tensors[0]
 
     def rdm(self, string: str, brawfn: Optional["MPSWavefunction"] = None,
             block2: Optional[bool] = None) -> Union[complex, numpy.ndarray]:
+        """ Returns the reduced density matrix (or elements) specified by the \
+        string argument.
+
+        Args:
+            string (str): Character string specifying which rdm elements to \
+                compute.
+
+            brawfn (MPSWavefunction): State used to compute transition \
+                rdm elements (optional).
+
+            block2 (bool): Whether or not to use the block2 driver (optional).
+
+        Returns:
+            rdm (numpy.ndarray): The reduced density matrix.
+
+        Raises:
+            ValueError: If provided string corresponds to beyond a full 3pdm.
+        """
         block2 = _default_fqe_opts["block2"] if block2 is None else block2
         # Get an individual rdm element
         if any(char.isdigit() for char in string):
@@ -441,7 +650,8 @@ class MPSWavefunction(MPS):
     def _block2_tddmrg(self, time: float, hamiltonian: MPS, **kwargs):
         # Gather all options
         steps = kwargs.get("steps", _default_fqe_opts["steps"])
-        n_sub_sweeps = kwargs.get("n_sub_sweeps", _default_fqe_opts["n_sub_sweeps"])
+        n_sub_sweeps = kwargs.get("n_sub_sweeps",
+                                  _default_fqe_opts["n_sub_sweeps"])
         add_noise = kwargs.get("add_noise", _default_fqe_opts["add_noise"])
 
         bdim = self.opts["max_bond_dim"]
@@ -494,6 +704,33 @@ def get_hf_mps(nele, sz, norbs, bdim,
                cutoff: float = 0.0,
                full: bool = True,
                occ: Optional[list[int]] = None) -> "MPSWavefunction":
+    """ Returns a Hartree-Fock MPSWavefunction.
+
+    Args:
+        nele (int): Number of electrons.
+
+        sz (int): Total spin.
+
+        norbs (int): Number of spatial orbitals.
+
+        bdim (int): Maximum bond dimension for the resulting MPSWavefunction.
+
+        e0 (float): Reference energy for the state.
+
+        cutoff (float): Cutoff for the resulting MPSWavefunction.
+
+        full (bool): Whether or not to include full space.
+
+        occ (list(int)): Lost of orbital occupation numbers.
+
+    Returns:
+        wfn (MPSWavefunction): MPSWavefunction corresponding to a HF state.
+
+    Raises:
+        ValueError: If the number of electrons, total spin, and number of \
+            orbitals are not compatible with each other, or if the provided \
+            occupancy is not compatible with these.
+    """
     if (nele + abs(sz)) // 2 > norbs:
         raise ValueError(
             f"Electron number is too large (nele = {nele}, norb = {norbs})")
@@ -540,7 +777,30 @@ def get_hf_mps(nele, sz, norbs, bdim,
 
 def get_random_mps(nele, sz, norbs, bdim,
                    e0: float = 0.0,
-                   cutoff: float = 0.0):
+                   cutoff: float = 0.0) -> "MPSWavefunction":
+    """ Returns a random MPSWavefunction.
+
+    Args:
+        nele (int): Number of electrons.
+
+        sz (int): Total spin.
+
+        norbs (int): Number of spatial orbitals.
+
+        bdim (int): Maximum bond dimension for the resulting MPSWavefunction.
+
+        e0 (float): Reference energy for the state.
+
+        cutoff (float): Cutoff for the resulting MPSWavefunction.
+
+    Returns:
+        wfn (MPSWavefunction): MPSWavefunction corresponding to a random state.
+
+    Raises:
+        ValueError: If the number of electrons, total spin, and number of \
+            orbitals are not compatible with each other, or if the provided \
+            occupancy is not compatible with these.
+    """
     if (nele + abs(sz)) // 2 > norbs:
         raise ValueError(
             f"Electron number is too large (nele = {nele}, norb = {norbs})")
