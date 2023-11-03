@@ -1,3 +1,4 @@
+import copy
 from itertools import product
 import random
 
@@ -8,7 +9,8 @@ from fqe.hamiltonians.sparse_hamiltonian import SparseHamiltonian
 from fqe.util import vdot
 from .test_H_ring import get_H_ring_data, \
     hamiltonian_from_molecule
-from mps_fqe.wavefunction import MPSWavefunction, get_hf_mps
+from mps_fqe.wavefunction import MPSWavefunction, get_hf_mps, \
+    get_random_mps
 from mps_fqe.hamiltonian import mpo_from_fqe_hamiltonian
 from openfermion import FermionOperator
 from openfermion.utils import hermitian_conjugated
@@ -105,3 +107,43 @@ def test_sparse_operator_evolve(time_axis, strategy):
 
         assert np.isclose(fqe_ovlp, block2_ovlp)
         assert np.isclose(block2_ovlp, pyblock_ovlp)
+
+
+@pytest.mark.parametrize("time_axis",
+                         ["real", "imaginary"])
+def test_add_noise(time_axis):
+    t = 0.1 if time_axis == "real" else 0.1j
+    norbs = 4
+    nele = 4
+    sz = 0
+    steps = 1
+    n_sub_sweeps = 1
+    max_bond_dim = 4 ** (norbs+1 // 2)
+    hermitian = time_axis == "real"
+
+    k1_triu = np.triu_indices(norbs, k=1)
+    nvars = norbs * (norbs-1) // 2
+    random_variables = [random.random() for _ in range(nvars)]
+    mat = np.zeros((norbs, norbs))
+    mat[k1_triu] = random_variables
+    mat += mat.T
+
+    mps_wfn = get_random_mps(nele, sz, norbs, max_bond_dim)
+    fqe_ops = get_fqe_operators(mat, hermitian)
+
+    evolved = copy.deepcopy(mps_wfn)
+    evolved_noise = copy.deepcopy(mps_wfn)
+    for fqe_op in fqe_ops:
+        mpo = mpo_from_fqe_hamiltonian(fqe_op, norbs)
+        evolved = evolved._block2_tddmrg(time=t, hamiltonian=mpo,
+                                         steps=steps,
+                                         n_sub_sweeps=n_sub_sweeps,
+                                         cutoff=0, iprint=0,
+                                         add_noise=False)
+        evolved_noise = evolved_noise._block2_tddmrg(time=t, hamiltonian=mpo,
+                                                     steps=steps,
+                                                     n_sub_sweeps=n_sub_sweeps,
+                                                     cutoff=0, iprint=0,
+                                                     add_noise=True)
+        phase = evolved.conj() @ evolved_noise
+        assert np.isclose(phase, evolved.norm()**2)

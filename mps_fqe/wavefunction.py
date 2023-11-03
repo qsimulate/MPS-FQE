@@ -359,9 +359,11 @@ class MPSWavefunction(MPS):
         cached = kwargs.get("cached", _default_fqe_opts["cached"])
         cutoff = kwargs.get("cutoff", _default_pyblock_opts["cutoff"])
         if block2:
+            add_noise = kwargs.get("add_noise", _default_fqe_opts["add_noise"])
             return self._block2_tddmrg(time=time, hamiltonian=hamiltonian,
                                        steps=steps, n_sub_sweeps=n_sub_sweeps,
-                                       cutoff=cutoff, iprint=0)
+                                       cutoff=cutoff, iprint=0,
+                                       add_noise=add_noise)
         dt = time / steps
         mps = self.copy()
 
@@ -653,6 +655,7 @@ class MPSWavefunction(MPS):
         n_sub_sweeps = kwargs.get("n_sub_sweeps",
                                   _default_fqe_opts["n_sub_sweeps"])
         add_noise = kwargs.get("add_noise", _default_fqe_opts["add_noise"])
+        noise = 1e-18
 
         bdim = self.opts["max_bond_dim"]
         cutoff = kwargs.get("cutoff", _default_pyblock_opts["cutoff"])
@@ -662,7 +665,7 @@ class MPSWavefunction(MPS):
 
         dt = time / steps
         # Make MPS complex if not already and if doing real time propagation
-        if not numpy.iscomplexobj(self.tensors[0].data) and time.real != 0:
+        if not numpy.iscomplexobj(self.tensors[0].data):
             for i in range(self.n_sites):
                 self.tensors[i].data = self.tensors[i].data.astype(complex)
 
@@ -670,7 +673,8 @@ class MPSWavefunction(MPS):
         if add_noise:
             hamiltonian = MPS(tensors=hamiltonian.tensors,
                               opts=hamiltonian.opts,
-                              const=1E-20)
+                              const=noise)
+
         if bdim == -1:
             bdim = 4 ** ((self.n_sites + 1) // 2)
         try:
@@ -694,7 +698,7 @@ class MPSWavefunction(MPS):
                                    n_sub_sweeps=n_sub_sweeps,
                                    cutoff=cutoff, iprint=iprint,
                                    normalize_mps=normalize)
-            mps = MPSTools.from_block2(b2mps).to_flat()
+            mps = MPSTools.from_block2(b2mps).to_flat()*numpy.exp(1j*dt*noise)
 
         return type(self)(tensors=mps.tensors, opts=self.opts)
 
@@ -703,7 +707,8 @@ def get_hf_mps(nele, sz, norbs, bdim,
                e0: float = 0.0,
                cutoff: float = 0.0,
                full: bool = True,
-               occ: Optional[list[int]] = None) -> "MPSWavefunction":
+               occ: Optional[list[int]] = None,
+               dtype: type = float) -> "MPSWavefunction":
     """ Returns a Hartree-Fock MPSWavefunction.
 
     Args:
@@ -723,6 +728,8 @@ def get_hf_mps(nele, sz, norbs, bdim,
 
         occ (list(int)): Lost of orbital occupation numbers.
 
+        dtype (type): data type for MPS tensors.
+
     Returns:
         wfn (MPSWavefunction): MPSWavefunction corresponding to a HF state.
 
@@ -730,6 +737,9 @@ def get_hf_mps(nele, sz, norbs, bdim,
         ValueError: If the number of electrons, total spin, and number of \
             orbitals are not compatible with each other, or if the provided \
             occupancy is not compatible with these.
+
+        TypeError: If the provided dtype argument is not supported. Options \
+            include float and complex.
     """
     if (nele + abs(sz)) // 2 > norbs:
         raise ValueError(
@@ -737,6 +747,10 @@ def get_hf_mps(nele, sz, norbs, bdim,
     if sz % 2 != nele % 2:
         raise ValueError(
             f"Spin (sz = {sz}) is incompatible with nele = {nele}")
+
+    if dtype not in [float, complex]:
+        raise TypeError("Supported data types are 'float' and 'complex',"
+                        f" {dtype} provided")
 
     fd = FCIDUMP(pg='c1',
                  n_sites=norbs,
@@ -765,7 +779,7 @@ def get_hf_mps(nele, sz, norbs, bdim,
     hamil = Hamiltonian(fd, flat=True)
     mps_info = MPSInfo(hamil.n_sites, hamil.vacuum, hamil.target, hamil.basis)
     mps_info.set_bond_dimension_occ(bdim, occ=occ)
-    mps_wfn = MPS.ones(mps_info)
+    mps_wfn = MPS.ones(mps_info, dtype=dtype)
     if full:
         mps_info_full = MPSInfo(
             hamil.n_sites, hamil.vacuum, hamil.target, hamil.basis)
@@ -777,7 +791,8 @@ def get_hf_mps(nele, sz, norbs, bdim,
 
 def get_random_mps(nele, sz, norbs, bdim,
                    e0: float = 0.0,
-                   cutoff: float = 0.0) -> "MPSWavefunction":
+                   cutoff: float = 0.0,
+                   dtype: type = float) -> "MPSWavefunction":
     """ Returns a random MPSWavefunction.
 
     Args:
@@ -793,6 +808,8 @@ def get_random_mps(nele, sz, norbs, bdim,
 
         cutoff (float): Cutoff for the resulting MPSWavefunction.
 
+        dtype (type): data type for MPS tensors.
+
     Returns:
         wfn (MPSWavefunction): MPSWavefunction corresponding to a random state.
 
@@ -800,6 +817,9 @@ def get_random_mps(nele, sz, norbs, bdim,
         ValueError: If the number of electrons, total spin, and number of \
             orbitals are not compatible with each other, or if the provided \
             occupancy is not compatible with these.
+
+        TypeError: If the provided dtype argument is not supported. Options \
+            include float and complex.
     """
     if (nele + abs(sz)) // 2 > norbs:
         raise ValueError(
@@ -808,6 +828,9 @@ def get_random_mps(nele, sz, norbs, bdim,
         raise ValueError(
             f"Spin (sz = {sz}) is incompatible with nele = {nele}")
 
+    if dtype not in [float, complex]:
+        raise TypeError("Supported data types are 'float' and 'complex',"
+                        f" {dtype} provided")
     nsocc = abs(sz)
     ndocc = (nele - nsocc) // 2
     nvirt = norbs - nsocc - ndocc
@@ -821,7 +844,7 @@ def get_random_mps(nele, sz, norbs, bdim,
     hamil = Hamiltonian(fd, flat=True)
     mps_info = MPSInfo(hamil.n_sites, hamil.vacuum, hamil.target, hamil.basis)
     mps_info.set_bond_dimension(bdim)
-    mps_wfn = MPS.random(mps_info)
+    mps_wfn = MPS.random(mps_info, dtype=dtype)
     return MPSWavefunction.from_pyblock3_mps(mps_wfn, max_bond_dim=bdim,
                                              cutoff=cutoff)
 
