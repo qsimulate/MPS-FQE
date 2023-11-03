@@ -698,7 +698,9 @@ class MPSWavefunction(MPS):
                                    n_sub_sweeps=n_sub_sweeps,
                                    cutoff=cutoff, iprint=iprint,
                                    normalize_mps=normalize)
-            mps = MPSTools.from_block2(b2mps).to_flat()*numpy.exp(1j*dt*noise)
+            mps = MPSTools.from_block2(b2mps).to_flat()
+            if add_noise:
+                mps = mps*numpy.exp(1j*dt*noise)
 
         return type(self)(tensors=mps.tensors, opts=self.opts)
 
