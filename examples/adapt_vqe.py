@@ -27,8 +27,6 @@ def get_N2_parameters(r, basis='sto6g'):
     norbs = mf.mo_coeff.shape[1]
     h1 = mf.mo_coeff.T @ mf.get_hcore() @ mf.mo_coeff
     h2 = ao2mo.restore(1, ao2mo.kernel(mol, mf.mo_coeff), norbs)
-    print(mf.e_tot)
-    exit()
     return nele, sz, e_0, h1, h2
 
 
