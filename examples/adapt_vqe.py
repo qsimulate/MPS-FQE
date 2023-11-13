@@ -1,4 +1,6 @@
+import pickle
 import io
+import os
 import sys
 from itertools import product
 from copy import deepcopy
@@ -22,12 +24,11 @@ def get_N2_parameters(r, basis='sto6g'):
     mf = scf.RHF(mol)
     mf.kernel()
     nele = mol.nelectron
-    sz = mol.spin
     e_0 = mol.energy_nuc()
     norbs = mf.mo_coeff.shape[1]
     h1 = mf.mo_coeff.T @ mf.get_hcore() @ mf.mo_coeff
     h2 = ao2mo.restore(1, ao2mo.kernel(mol, mf.mo_coeff), norbs)
-    return nele, sz, e_0, h1, h2
+    return (h1, h2), e_0, nele, mf.e_tot
 
 
 class OperatorPool:
@@ -113,6 +114,7 @@ class ADAPT():
         if self.verbose:
             with open("ADAPT.log", 'a') as fout:
                 fout.write("Starting ADAPT-MPS calculation with: \n")
+                fout.write(f"max bond dimension = {initial_wfn.opts['max_bond_dim']}\n")
                 fout.write(f"force norm thresh = {self.force_norm_thresh}\n")
                 fout.write(f"max iteration = {self.max_iteration}\n")
                 fout.write(f"rk4 bound = {self.rk4_bound}\n")
@@ -131,8 +133,13 @@ class ADAPT():
                 wfn = wfn.time_evolve(time=1j*coeff,
                                       hamiltonian=mpo,
                                       method=method,
-                                      steps=1,
+                                      steps=4,
                                       add_noise=True)
+                if method == "rk4":
+                    wfn, _ = wfn.compress(
+                        max_bond_dim=wfn.opts["max_bond_dim"],
+                        cutoff=wfn.opts["cutoff"])
+
             self.energies.append(wfn.expectationValue(self.hamiltonian).real)
 
             # Calculate all of the gradients
@@ -154,9 +161,9 @@ class ADAPT():
             self.selected_operator_coefficients.append(0.0)
 
             # Perform the optimization
-            if iteration > 0:
-                self.selected_operator_coefficients \
-                    = self.optimize_coefficients(initial_wfn, exact_apply)
+            #if iteration > 0:
+            self.selected_operator_coefficients \
+                = self.optimize_coefficients(initial_wfn, exact_apply)
             iteration += 1
 
         if self.verbose:
@@ -182,8 +189,13 @@ class ADAPT():
                 phi = phi.time_evolve(time=1j*coeff,
                                       hamiltonian=mpo,
                                       method=method,
-                                      steps=1,
+                                      steps=4,
                                       add_noise=True)
+                if method == "rk4":
+                    phi, _ = phi.compress(
+                        max_bond_dim=phi.opts["max_bond_dim"],
+                        cutoff=phi.opts["cutoff"])
+            assert np.isclose(phi.norm(), 1.0)
             energy = phi.expectationValue(self.hamiltonian).real
             sigma = phi.apply(self.hamiltonian, exact=exact_apply)
             sigma, _ = sigma.compress(max_bond_dim=sigma.opts["max_bond_dim"],
@@ -197,17 +209,23 @@ class ADAPT():
                         cutoff=phi.opts["cutoff"])
                 gradients[i] = 2.0 * phi.expectationValue(mpo,
                                                           brawfn=sigma).real
-                coeff = coeffs[i]
-                phi = phi.time_evolve(time=-1j*coeff,
+                phi = phi.time_evolve(time=-1j*coeffs[i],
                                       hamiltonian=mpo,
                                       method=method,
-                                      steps=1,
+                                      steps=4,
                                       add_noise=True)
-                sigma = sigma.time_evolve(time=-1j*coeff,
+                sigma = sigma.time_evolve(time=-1j*coeffs[i],
                                           hamiltonian=mpo,
                                           method=method,
-                                          steps=1,
+                                          steps=4,
                                           add_noise=True)
+                if method == "rk4":
+                    phi, _ = phi.compress(
+                        max_bond_dim=phi.opts["max_bond_dim"],
+                        cutoff=phi.opts["cutoff"])
+                    sigma, _ = sigma.compress(
+                        max_bond_dim=sigma.opts["max_bond_dim"],
+                        cutoff=sigma.opts["cutoff"])
             return (energy, np.array(gradients, order="F"))
 
         res = sp.optimize.minimize(cost_function,
@@ -223,6 +241,9 @@ class ADAPT():
 
         grads = np.zeros_like(self.pool)
         H_wfn = wfn.apply(self.hamiltonian, exact=exact_apply)
+        H_wfn, _ = H_wfn.compress(
+            max_bond_dim=wfn.opts["max_bond_dim"],
+            cutoff=wfn.opts["cutoff"])
         for i, op in enumerate(self.pool):
             mpo, _ = mpo_from_fqe_hamiltonian(
                 op, n_sites=wfn.n_sites).compress(cutoff=wfn.opts["cutoff"])
@@ -230,21 +251,22 @@ class ADAPT():
                 - H_wfn.expectationValue(mpo, brawfn=wfn)
 
         sys.stdout = save_stdout
-        return grads
+        return grads.real
 
 
 
 if __name__ == '__main__':
     # ADAPT-MPS parameters
-    rk4_bound = 10
+    rk4_bound = 0
     exact_apply = True
 
     # Molecular parameters
     basis = "sto6g"
-    rs = [0.9 + i*0.1 for i in range(11)]
-    nele, sz, _, h1, _ = get_N2_parameters(rs[0], basis)
-    norbs = len(h1[0])
+    rs = [0.9 + i*0.2 for i in range(6)]
+    (h1, h2), e_0, nele, _ = get_N2_parameters(rs[0], basis)
+    sz = 0
     assert abs(sz) == 0
+    norbs = len(h1[0])
     nocc = nele//2
     occ = list(range(nocc))
     virt = list(range(nocc, norbs))
@@ -255,27 +277,42 @@ if __name__ == '__main__':
     op_pool.two_body_sz_adapted()
 
     # MPSWavefunction parameters
-    bdims = [100, 200, 300]
+    bdims = [400]#100, 200, 300]
     cutoff = 1E-14
+
+    # Do calculation for each of the bond dims
     for bdim in bdims:
-        initial_wfn = get_hf_mps(nele, sz, norbs,
-                                 bdim=bdim,
-                                 cutoff=cutoff,
-                                 dtype=complex)
-        assert initial_wfn.opts["cutoff"] == cutoff
+        filename = f"wfn_{bdim}_{basis}.pkl"
+        if os.path.exists(filename):
+            initial_wfn = pickle.load(open(filename, 'rb'))
+        else:
+            # Get the initial wave function
+            (h1, h2), e_0, nele, E_hf = get_N2_parameters(rs[0], basis)
+            fd = FCIDUMP(pg='c1', n_sites=norbs, n_elec=nele, twos=sz, ipg=0,
+                         uhf=False, h1e=h1, g2e=h2, const_e=e_0)
+            ham, _ = Hamiltonian(fd, flat=True).build_qc_mpo().compress(
+                cutoff=cutoff)
+            initial_wfn = get_hf_mps(nele, sz, norbs,
+                                     bdim=bdim,
+                                     cutoff=cutoff,
+                                     dtype=complex)
+            initial_wfn = initial_wfn.time_evolve(-0.1j, ham, steps=10)
+            initial_wfn /= initial_wfn.norm()
+            initial_wfn = MPSWavefunction.from_pyblock3_mps(initial_wfn,
+                                                            cutoff=cutoff,
+                                                            max_bond_dim=bdim)
+            pickle.dump(initial_wfn, open(filename, 'wb'))
         assert initial_wfn.opts["max_bond_dim"] == bdim
-        niters = []
-        energies = []
+        assert initial_wfn.opts["cutoff"] == cutoff
+        # Get potential
         for r in rs:
-            _, _, e_0, h1, h2 = get_N2_parameters(r, basis)
+            (h1, h2), e_0, nele, E_hf = get_N2_parameters(r, basis)
             fd = FCIDUMP(pg='c1', n_sites=norbs, n_elec=nele, twos=sz, ipg=0,
                          uhf=False, h1e=h1, g2e=h2, const_e=e_0)
             ham, _ = Hamiltonian(fd, flat=True).build_qc_mpo().compress(
                 cutoff=cutoff)
             adapt = ADAPT(ham, op_pool, rk4_bound=rk4_bound)
             niter, E_final = adapt.run(initial_wfn, exact_apply=exact_apply)
-            niters.append(niter)
-            energies.append(E_final)
-        with open(f"adapt_n2_{r}.out", 'w') as fout:
-            for i, energy in enumerate(energies):
-                fout.write(f"{rs[i]}\t{energy}\t{niters[i]}\n")
+            with open(f"adapt_n2_{r}_{basis}.out", 'a') as fout:
+                fout.write(f"{r}\t{E_final}\t{niter}\t{E_hf}\n")
+                fout.flush()
