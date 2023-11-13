@@ -247,8 +247,7 @@ class ADAPT():
         for i, op in enumerate(self.pool):
             mpo, _ = mpo_from_fqe_hamiltonian(
                 op, n_sites=wfn.n_sites).compress(cutoff=wfn.opts["cutoff"])
-            grads[i] = wfn.expectationValue(mpo, brawfn=H_wfn) \
-                - H_wfn.expectationValue(mpo, brawfn=wfn)
+            grads[i] = 2*wfn.expectationValue(mpo, brawfn=H_wfn)
 
         sys.stdout = save_stdout
         return grads.real
@@ -261,7 +260,7 @@ if __name__ == '__main__':
     exact_apply = True
 
     # Molecular parameters
-    basis = "sto6g"
+    basis = "6-31g"
     rs = [0.9 + i*0.2 for i in range(6)]
     (h1, h2), e_0, nele, _ = get_N2_parameters(rs[0], basis)
     sz = 0
@@ -277,7 +276,7 @@ if __name__ == '__main__':
     op_pool.two_body_sz_adapted()
 
     # MPSWavefunction parameters
-    bdims = [400]#100, 200, 300]
+    bdims = [100, 200, 300, 400]
     cutoff = 1E-14
 
     # Do calculation for each of the bond dims
