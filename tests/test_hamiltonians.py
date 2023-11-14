@@ -9,13 +9,16 @@ from mps_fqe.hamiltonian import mpo_from_fqe_hamiltonian
 from .test_H_ring import get_H_ring_data
 
 
-@pytest.mark.parametrize("amount_H", range(2, 5))
-def test_restricted(amount_H):
+@pytest.mark.parametrize("amount_H", range(3, 5))
+@pytest.mark.parametrize("complex_h", [False, True])
+def test_restricted(amount_H, complex_h):
     molecule = get_H_ring_data(amount_H)
     nele = molecule.n_electrons
     sz = molecule.multiplicity - 1
     norbs = molecule.n_orbitals
     h1, h2 = molecule.get_integrals()
+    if complex_h:
+        h1 = h1.astype(numpy.complex128)
 
     fqe_wfn = fqe.Wavefunction([[nele, sz, norbs]])
     fqe_wfn.set_wfn(strategy="hartree-fock")
@@ -103,5 +106,33 @@ def test_sparse_hamiltonian(n_electrons, sz, n_orbitals):
 def test_sparse_nsites_error():
     operator = FermionOperator('0^ 0')
     hamiltonian = fqe.sparse_hamiltonian.SparseHamiltonian(operator)
-    with pytest.raises(ValueError):
+    err = "Must provide n_sites for sparse Hamiltonian"
+    with pytest.raises(ValueError, match=err):
         mpo_from_fqe_hamiltonian(fqe_ham=hamiltonian)
+
+
+def test_mpo_type_error():
+
+    class FakeHamil:
+        def e_0(self):
+            return 0
+
+        def dim(self):
+            return 1
+
+    hamiltonian = FakeHamil() 
+    err = "Have not implemented MPO for"
+    with pytest.raises(TypeError, match=err):
+        mpo_from_fqe_hamiltonian(fqe_ham=hamiltonian)
+
+
+def test_restricted_mpo_value_error():
+    n = 2
+    h1 = numpy.zeros((2, 2))
+    h2 = numpy.zeros((2, 2, 2, 2))
+    h3 = numpy.zeros((2, 2, 2, 2, 2, 2))
+    hamiltonian = fqe.restricted_hamiltonian.RestrictedHamiltonian(tensors=(h1,h2,h3))
+    err = "3-body or higher interactions are not supported"
+    with pytest.raises(ValueError, match=err):
+        mpo_from_fqe_hamiltonian(fqe_ham=hamiltonian)
+
