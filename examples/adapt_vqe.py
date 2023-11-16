@@ -134,7 +134,8 @@ class ADAPT():
                                       hamiltonian=mpo,
                                       method=method,
                                       steps=4,
-                                      add_noise=True)
+                                      add_noise=True,
+                                      block2=False)
                 if method == "rk4":
                     wfn, _ = wfn.compress(
                         max_bond_dim=wfn.opts["max_bond_dim"],
@@ -190,7 +191,8 @@ class ADAPT():
                                       hamiltonian=mpo,
                                       method=method,
                                       steps=4,
-                                      add_noise=True)
+                                      add_noise=True,
+                                      block2=False)
                 if method == "rk4":
                     phi, _ = phi.compress(
                         max_bond_dim=phi.opts["max_bond_dim"],
@@ -213,12 +215,14 @@ class ADAPT():
                                       hamiltonian=mpo,
                                       method=method,
                                       steps=4,
-                                      add_noise=True)
+                                      add_noise=True,
+                                      block2=False)
                 sigma = sigma.time_evolve(time=-1j*coeffs[i],
                                           hamiltonian=mpo,
                                           method=method,
                                           steps=4,
-                                          add_noise=True)
+                                          add_noise=True,
+                                          block2=False)
                 if method == "rk4":
                     phi, _ = phi.compress(
                         max_bond_dim=phi.opts["max_bond_dim"],
@@ -261,7 +265,7 @@ if __name__ == '__main__':
 
     # Molecular parameters
     basis = "6-31g"
-    rs = [0.9 + i*0.2 for i in range(6)]
+    rs = [1.1 + i*0.2 for i in range(6)]
     (h1, h2), e_0, nele, _ = get_N2_parameters(rs[0], basis)
     sz = 0
     assert abs(sz) == 0
