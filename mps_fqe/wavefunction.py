@@ -78,11 +78,11 @@ class MPSWavefunction(MPS):
         # Get default fqe options if not provided
 
         sectors = fqe_wfn.sectors()
+        if not sectors:
+            raise ValueError(
+                "MPS cannot be constructed from empty Wavefunction")
 
         def get_fci_FlatSparseTensor(sectors):
-            if not sectors:
-                return None
-
             n_blocks = sum(fqe_wfn.get_coeff(sector).size
                            for sector in sectors)
             ndim = fqe_wfn.norb()
@@ -329,7 +329,7 @@ class MPSWavefunction(MPS):
     def transform(self):
         """Not currently implemented.
         """
-        pass
+        raise NotImplementedError
 
     def tddmrg(self,
                time: float,
@@ -560,6 +560,12 @@ class MPSWavefunction(MPS):
             ValueError: If provided string corresponds to beyond a full 3pdm.
         """
         block2 = _default_fqe_opts["block2"] if block2 is None else block2
+
+        # check the rank of the operator
+        rank = len(string.split()) // 2
+        if len(string.split()) % 2 != 0:
+            raise ValueError("RDM must have even number of operators.")
+
         # Get an individual rdm element
         if any(char.isdigit() for char in string):
             mpo = mpo_from_fqe_hamiltonian(
@@ -567,14 +573,12 @@ class MPSWavefunction(MPS):
                 n_sites=self.n_sites)
             return self.expectationValue(mpo, brawfn)
 
-        rank = len(string.split()) // 2
-        if len(string.split()) % 2 != 0:
-            raise ValueError("RDM must have even number of operators.")
         if block2:
             if brawfn is not None:
-                raise ValueError("Transition density not implemented \
-                with block2 driver.")
+                raise ValueError(
+                    "Transition density not implemented with block2 driver.")
             return self._block2_rdm(rank)
+
         # Get the entire rdm
         if rank == 1:
             return self._get_rdm1(brawfn)
@@ -770,13 +774,13 @@ def get_hf_mps(nele, sz, norbs, bdim,
     occv = occ.count(0)
     if occd != ndocc:
         raise ValueError(
-            "Inconsistent doubly occupied orbitals: {occd} ({docc})")
+            f"Inconsistent doubly occupied orbitals: {occd} ({ndocc})")
     if occs != nsocc:
         raise ValueError(
-            "Inconsistent singly occupied orbitals: {occs} ({socc})")
+            f"Inconsistent singly occupied orbitals: {occs} ({nsocc})")
     if occv != nvirt:
         raise ValueError(
-            "Inconsistent virtual orbitals: {occv} ({virt})")
+            f"Inconsistent virtual orbitals: {occv} ({nvirt})")
 
     hamil = Hamiltonian(fd, flat=True)
     mps_info = MPSInfo(hamil.n_sites, hamil.vacuum, hamil.target, hamil.basis)

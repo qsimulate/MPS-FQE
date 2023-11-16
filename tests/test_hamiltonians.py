@@ -120,7 +120,7 @@ def test_mpo_type_error():
         def dim(self):
             return 1
 
-    hamiltonian = FakeHamil() 
+    hamiltonian = FakeHamil()
     err = "Have not implemented MPO for"
     with pytest.raises(TypeError, match=err):
         mpo_from_fqe_hamiltonian(fqe_ham=hamiltonian)
@@ -128,11 +128,11 @@ def test_mpo_type_error():
 
 def test_restricted_mpo_value_error():
     n = 2
-    h1 = numpy.zeros((2, 2))
-    h2 = numpy.zeros((2, 2, 2, 2))
-    h3 = numpy.zeros((2, 2, 2, 2, 2, 2))
-    hamiltonian = fqe.restricted_hamiltonian.RestrictedHamiltonian(tensors=(h1,h2,h3))
+    h1 = numpy.zeros((n, n))
+    h2 = numpy.zeros((n, n, n, n))
+    h3 = numpy.zeros((n, n, n, n, n, n))
+    hamiltonian = fqe.restricted_hamiltonian.RestrictedHamiltonian(
+        tensors=(h1, h2, h3))
     err = "3-body or higher interactions are not supported"
     with pytest.raises(ValueError, match=err):
         mpo_from_fqe_hamiltonian(fqe_ham=hamiltonian)
-
