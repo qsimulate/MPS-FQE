@@ -623,11 +623,17 @@ class MPSWavefunction(MPS):
     def _block2_rdm(self, rank):
         if rank > 3:
             raise ValueError("Only implemented up to 3pdm.")
+        try:
+            n_threads = int(os.environ['OMP_NUM_THREADS'])
+        except KeyError:
+            # OMP_NUM_THREADS is not set
+            n_threads = 1
+
         with tempfile.TemporaryDirectory() as temp_dir:
             os.environ['TMPDIR'] = str(temp_dir)
             driver = DMRGDriver(scratch=os.environ['TMPDIR'],
                                 symm_type=SymmetryTypes.SZ | SymmetryTypes.CPX,
-                                n_threads=3)
+                                n_threads=n_threads)
             driver.initialize_system(n_sites=self.n_sites,
                                      orb_sym=[0]*self.n_sites)
             b2mps = MPSTools.to_block2(self, save_dir=driver.scratch)
