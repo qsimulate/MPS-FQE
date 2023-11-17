@@ -287,11 +287,9 @@ class MPSWavefunction(MPS):
         mps = self.copy()
         mps = mpo @ mps + 0*mps
 
-        # It may still be possible to get an integer zero here.
-        # For now, we raise a RuntimeError
+        # This shouldn't happen now, so we check with an AssertionError
         if isinstance(mps, int):
-            assert mps == 0
-            raise RuntimeError("Integer zero obtained when applying MPO")
+            raise AssertionError
 
         return type(self)(tensors=mps.tensors, opts=self.opts)
 

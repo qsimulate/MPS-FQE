@@ -70,6 +70,18 @@ def test_random_wavefunction(nele, sz, norb):
     assert sector[1] == sz
 
 
+@pytest.mark.parametrize("nele, sz, norb", [
+    (2, 0, 2), (2, 0, 4),
+    (1, 1, 2), (1, -1, 2)])
+def test_scale(nele, sz, norb):
+    mps = get_random_mps(nele, sz, norb, bdim=50)
+    ref = mps @ mps
+
+    mps.scale(1/numpy.sqrt(2))
+    out = mps @ mps
+    assert abs(2*out - ref) < 1e-10
+
+
 def test_wavefunction_apply_diagonal():
     nele, sz, norb = 4, 0, 4
     numpy.random.seed(77)
