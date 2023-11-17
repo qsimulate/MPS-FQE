@@ -146,11 +146,8 @@ def get_restricted_mpo(fqe_ham: FqeHamiltonian,
         fd.g2e = numpy.zeros((n, n, n, n), dtype=fd.h1e.dtype)
     elif ntensor == 2:
         fd.g2e = numpy.einsum("ikjl", -2 * fqe_ham.tensors()[1])
-    elif ntensor > 2:
-        raise ValueError("3-body or higher interactions are not supported")
     else:
-        raise ValueError(
-            f"Bad number of tensors in RestrictedHamiltonian: {ntensor}")
+        raise ValueError("3-body or higher interactions are not supported")
 
     hamil = Hamiltonian(fd, flat=flat)
     if numpy.iscomplexobj(fd.h1e) or numpy.iscomplexobj(fd.g2e):

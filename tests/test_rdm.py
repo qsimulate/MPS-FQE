@@ -64,3 +64,27 @@ def test_rdm3(n_electrons, sz, n_orbitals):
     assert numpy.allclose(mps.rdm('i^ j^ k^ l m n', block2=False),
                           fqe_wfn.rdm('i^ j^ k^ l m n'),
                           atol=1E-12)
+
+
+def test_rdm_exceptions():
+    n_electrons = 6
+    sz = 2
+    n_orbitals = 4
+    fqe_wfn = fqe.Wavefunction([[n_electrons, sz, n_orbitals]])
+    fqe_wfn.set_wfn(strategy='random')
+    mps = MPSWavefunction.from_fqe_wavefunction(fqe_wfn=fqe_wfn)
+    err = "RDM must have even number of operators."
+    with pytest.raises(ValueError, match=err):
+        _ = mps.rdm('0^')
+
+    err = "Transition density not implemented with block2 driver."
+    with pytest.raises(ValueError, match=err):
+        _ = mps.rdm('i^ j', block2=True, brawfn=mps)
+
+    err = "RDM is only implemented up to 3pdm."
+    with pytest.raises(ValueError, match=err):
+        _ = mps.rdm('i^ j^ k^ l^ a b c d', block2=False)
+
+    err = "Only implemented up to 3pdm."
+    with pytest.raises(ValueError, match=err):
+        _ = mps.rdm('i^ j^ k^ l^ a b c d', block2=True)

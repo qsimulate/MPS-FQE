@@ -34,7 +34,8 @@ def get_fqe_operators(mat: np.ndarray, hermitian: bool = True):
     return fqe_ops
 
 
-def test_H_ring_evolve():
+@pytest.mark.parametrize("with_mpo", [True, False])
+def test_H_ring_evolve(with_mpo):
     amount_H = 6
     molecule = get_H_ring_data(amount_H)
     nele = molecule.n_electrons
@@ -42,18 +43,19 @@ def test_H_ring_evolve():
     sz = molecule.multiplicity - 1
     bdim = 4 ** ((amount_H + 1) // 2)
     hamiltonian = hamiltonian_from_molecule(molecule)
-    mpo = mpo_from_fqe_hamiltonian(fqe_ham=hamiltonian)
+    op = mpo_from_fqe_hamiltonian(fqe_ham=hamiltonian)\
+        if with_mpo else hamiltonian
     dt = 0.05
     tddmrg_steps = 10
     sub_sweeps = 2
     total_time = dt*tddmrg_steps*sub_sweeps
 
     init_mps = get_hf_mps(nele, sz, norbs, bdim=bdim)
-    block2_evolved = init_mps.time_evolve(total_time, mpo,
+    block2_evolved = init_mps.time_evolve(total_time, op,
                                           steps=tddmrg_steps,
                                           n_sub_sweeps=sub_sweeps,
                                           block2=True)
-    pyblock_evolved = init_mps.time_evolve(total_time, mpo,
+    pyblock_evolved = init_mps.time_evolve(total_time, op,
                                            steps=tddmrg_steps,
                                            n_sub_sweeps=sub_sweeps,
                                            block2=False)

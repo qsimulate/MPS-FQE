@@ -78,11 +78,11 @@ class MPSWavefunction(MPS):
         # Get default fqe options if not provided
 
         sectors = fqe_wfn.sectors()
+        if not sectors:
+            raise ValueError(
+                "MPS cannot be constructed from empty Wavefunction")
 
         def get_fci_FlatSparseTensor(sectors):
-            if not sectors:
-                return None
-
             n_blocks = sum(fqe_wfn.get_coeff(sector).size
                            for sector in sectors)
             ndim = fqe_wfn.norb()
@@ -287,11 +287,9 @@ class MPSWavefunction(MPS):
         mps = self.copy()
         mps = mpo @ mps + 0*mps
 
-        # It may still be possible to get an integer zero here.
-        # For now, we raise a RuntimeError
+        # This shouldn't happen now, so we check with an AssertionError
         if isinstance(mps, int):
-            assert mps == 0
-            raise RuntimeError("Integer zero obtained when applying MPO")
+            raise AssertionError
 
         return type(self)(tensors=mps.tensors, opts=self.opts)
 
@@ -329,7 +327,7 @@ class MPSWavefunction(MPS):
     def transform(self):
         """Not currently implemented.
         """
-        pass
+        raise NotImplementedError
 
     def tddmrg(self,
                time: float,
@@ -560,6 +558,12 @@ class MPSWavefunction(MPS):
             ValueError: If provided string corresponds to beyond a full 3pdm.
         """
         block2 = _default_fqe_opts["block2"] if block2 is None else block2
+
+        # check the rank of the operator
+        rank = len(string.split()) // 2
+        if len(string.split()) % 2 != 0:
+            raise ValueError("RDM must have even number of operators.")
+
         # Get an individual rdm element
         if any(char.isdigit() for char in string):
             mpo = mpo_from_fqe_hamiltonian(
@@ -567,14 +571,12 @@ class MPSWavefunction(MPS):
                 n_sites=self.n_sites)
             return self.expectationValue(mpo, brawfn)
 
-        rank = len(string.split()) // 2
-        if len(string.split()) % 2 != 0:
-            raise ValueError("RDM must have even number of operators.")
         if block2:
             if brawfn is not None:
-                raise ValueError("Transition density not implemented \
-                with block2 driver.")
+                raise ValueError(
+                    "Transition density not implemented with block2 driver.")
             return self._block2_rdm(rank)
+
         # Get the entire rdm
         if rank == 1:
             return self._get_rdm1(brawfn)
@@ -745,9 +747,6 @@ def get_hf_mps(nele, sz, norbs, bdim,
         ValueError: If the number of electrons, total spin, and number of \
             orbitals are not compatible with each other, or if the provided \
             occupancy is not compatible with these.
-
-        TypeError: If the provided dtype argument is not supported. Options \
-            include float and complex.
     """
     if (nele + abs(sz)) // 2 > norbs:
         raise ValueError(
@@ -755,10 +754,6 @@ def get_hf_mps(nele, sz, norbs, bdim,
     if sz % 2 != nele % 2:
         raise ValueError(
             f"Spin (sz = {sz}) is incompatible with nele = {nele}")
-
-    if dtype not in [float, complex]:
-        raise TypeError("Supported data types are 'float' and 'complex',"
-                        f" {dtype} provided")
 
     fd = FCIDUMP(pg='c1',
                  n_sites=norbs,
@@ -776,13 +771,13 @@ def get_hf_mps(nele, sz, norbs, bdim,
     occv = occ.count(0)
     if occd != ndocc:
         raise ValueError(
-            "Inconsistent doubly occupied orbitals: {occd} ({docc})")
+            f"Inconsistent doubly occupied orbitals: {occd} ({ndocc})")
     if occs != nsocc:
         raise ValueError(
-            "Inconsistent singly occupied orbitals: {occs} ({socc})")
+            f"Inconsistent singly occupied orbitals: {occs} ({nsocc})")
     if occv != nvirt:
         raise ValueError(
-            "Inconsistent virtual orbitals: {occv} ({virt})")
+            f"Inconsistent virtual orbitals: {occv} ({nvirt})")
 
     hamil = Hamiltonian(fd, flat=True)
     mps_info = MPSInfo(hamil.n_sites, hamil.vacuum, hamil.target, hamil.basis)
@@ -825,9 +820,6 @@ def get_random_mps(nele, sz, norbs, bdim,
         ValueError: If the number of electrons, total spin, and number of \
             orbitals are not compatible with each other, or if the provided \
             occupancy is not compatible with these.
-
-        TypeError: If the provided dtype argument is not supported. Options \
-            include float and complex.
     """
     if (nele + abs(sz)) // 2 > norbs:
         raise ValueError(
@@ -836,9 +828,6 @@ def get_random_mps(nele, sz, norbs, bdim,
         raise ValueError(
             f"Spin (sz = {sz}) is incompatible with nele = {nele}")
 
-    if dtype not in [float, complex]:
-        raise TypeError("Supported data types are 'float' and 'complex',"
-                        f" {dtype} provided")
     nsocc = abs(sz)
     ndocc = (nele - nsocc) // 2
     nvirt = norbs - nsocc - ndocc
