@@ -23,7 +23,8 @@ def mpo_from_fqe_hamiltonian(fqe_ham: FqeHamiltonian,
                              pg: str = "c1",
                              flat: bool = True,
                              cutoff: float = 1E-12,
-                             max_bond_dim: int = -1) -> "MPS":
+                             max_bond_dim: int = -1,
+                             add_identity: bool = False) -> "MPS":
     """Generate an MPO from an FQEHamiltonian object.
 
     Args:
@@ -63,7 +64,8 @@ def mpo_from_fqe_hamiltonian(fqe_ham: FqeHamiltonian,
                                                fd,
                                                flat,
                                                cutoff,
-                                               max_bond_dim)
+                                               max_bond_dim,
+                                               add_identity)
     raise TypeError(f"Have not implemented MPO for {type(fqe_ham)}")
 
 
@@ -71,7 +73,8 @@ def get_sparse_mpo(fqe_ham: FqeHamiltonian,
                    fd: FCIDUMP,
                    flat: bool = True,
                    cutoff: float = 1E-12,
-                   max_bond_dim: int = -1) -> "MPS":
+                   max_bond_dim: int = -1,
+                   add_identity: bool = False) -> "MPS":
     """Generate an MPO from a fqe.sparse_hamiltonian.SparseHamiltonian.
 
     Args:
@@ -113,7 +116,8 @@ def get_sparse_mpo(fqe_ham: FqeHamiltonian,
                           const=fqe_ham.e_0(),
                           cutoff=cutoff,
                           max_bond_dim=max_bond_dim)
-
+    if add_identity:
+        mpo = mpo + 1e-12 * hamil.build_identity_mpo()
     return mpo.to_sparse()
 
 
@@ -121,7 +125,8 @@ def get_restricted_mpo(fqe_ham: FqeHamiltonian,
                        fd: FCIDUMP,
                        flat: bool = True,
                        cutoff: float = 1E-12,
-                       max_bond_dim: int = -1) -> "MPS":
+                       max_bond_dim: int = -1,
+                       add_identity: bool = False) -> "MPS":
     """Generate an MPO from a fqe.restricted_hamiltonian.RestrictedHamiltonian.
 
     Args:
@@ -167,7 +172,8 @@ def get_diagonal_coulomb_mpo(fqe_ham: FqeHamiltonian,
                              fd: FCIDUMP,
                              flat: bool = True,
                              cutoff: float = 1E-12,
-                             max_bond_dim: int = -1) -> "MPS":
+                             max_bond_dim: int = -1,
+                             add_identity: bool = False) -> "MPS":
     """Generate an MPO from a fqe.diagonal_coulomb.DiagonalCoulomb.
 
     Args:
@@ -214,7 +220,8 @@ def get_diagonal_mpo(fqe_ham: FqeHamiltonian,
                      fd: FCIDUMP,
                      flat: bool = True,
                      cutoff: float = 1E-12,
-                     max_bond_dim: int = -1) -> "MPS":
+                     max_bond_dim: int = -1,
+                     add_identity: bool = False) -> "MPS":
     """Generate an MPO from a fqe.diagonal_hamiltonian.Diagonal.
 
     Args:
