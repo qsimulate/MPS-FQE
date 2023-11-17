@@ -743,9 +743,6 @@ def get_hf_mps(nele, sz, norbs, bdim,
         ValueError: If the number of electrons, total spin, and number of \
             orbitals are not compatible with each other, or if the provided \
             occupancy is not compatible with these.
-
-        TypeError: If the provided dtype argument is not supported. Options \
-            include float and complex.
     """
     if (nele + abs(sz)) // 2 > norbs:
         raise ValueError(
@@ -753,10 +750,6 @@ def get_hf_mps(nele, sz, norbs, bdim,
     if sz % 2 != nele % 2:
         raise ValueError(
             f"Spin (sz = {sz}) is incompatible with nele = {nele}")
-
-    if dtype not in [float, complex]:
-        raise TypeError("Supported data types are 'float' and 'complex',"
-                        f" {dtype} provided")
 
     fd = FCIDUMP(pg='c1',
                  n_sites=norbs,
@@ -823,9 +816,6 @@ def get_random_mps(nele, sz, norbs, bdim,
         ValueError: If the number of electrons, total spin, and number of \
             orbitals are not compatible with each other, or if the provided \
             occupancy is not compatible with these.
-
-        TypeError: If the provided dtype argument is not supported. Options \
-            include float and complex.
     """
     if (nele + abs(sz)) // 2 > norbs:
         raise ValueError(
@@ -834,9 +824,6 @@ def get_random_mps(nele, sz, norbs, bdim,
         raise ValueError(
             f"Spin (sz = {sz}) is incompatible with nele = {nele}")
 
-    if dtype not in [float, complex]:
-        raise TypeError("Supported data types are 'float' and 'complex',"
-                        f" {dtype} provided")
     nsocc = abs(sz)
     ndocc = (nele - nsocc) // 2
     nvirt = norbs - nsocc - ndocc
