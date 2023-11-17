@@ -13,7 +13,8 @@ from pyblock3.algebra.mps import MPS
 from pyblock3.fcidump import FCIDUMP
 from pyblock3.hamiltonian import Hamiltonian
 from fqe.hamiltonians.sparse_hamiltonian import SparseHamiltonian
-from mps_fqe.wavefunction import get_hf_mps, MPSWavefunction
+from mps_fqe.wavefunction import get_hf_mps, get_random_mps,\
+    MPSWavefunction
 from mps_fqe.hamiltonian import mpo_from_fqe_hamiltonian
 
 
@@ -127,15 +128,15 @@ class ADAPT():
             for i, coeff in enumerate(self.selected_operator_coefficients):
                 method = "tddmrg" if i >= self.rk4_bound else rk4
                 op_index = self.selected_operator_indices[i]
-                mpo, _ = mpo_from_fqe_hamiltonian(
-                    self.pool[op_index], n_sites=wfn.n_sites).compress(
-                        cutoff=wfn.opts["cutoff"])
+                mpo = mpo_from_fqe_hamiltonian(
+                    self.pool[op_index], n_sites=wfn.n_sites,
+                    add_identity=True)
                 wfn = wfn.time_evolve(time=1j*coeff,
                                       hamiltonian=mpo,
                                       method=method,
                                       steps=4,
                                       add_noise=True,
-                                      block2=False)
+                                      block2=True)
                 if method == "rk4":
                     wfn, _ = wfn.compress(
                         max_bond_dim=wfn.opts["max_bond_dim"],
@@ -162,7 +163,7 @@ class ADAPT():
             self.selected_operator_coefficients.append(0.0)
 
             # Perform the optimization
-            #if iteration > 0:
+            # if iteration > 0:
             self.selected_operator_coefficients \
                 = self.optimize_coefficients(initial_wfn, exact_apply)
             iteration += 1
@@ -184,15 +185,15 @@ class ADAPT():
             for i, coeff in enumerate(coeffs):
                 method = "tddmrg" if i >= self.rk4_bound else rk4
                 op_index = self.selected_operator_indices[i]
-                mpo, _ = mpo_from_fqe_hamiltonian(
-                    self.pool[op_index], n_sites=phi.n_sites).compress(
-                        cutoff=phi.opts["cutoff"])
+                mpo = mpo_from_fqe_hamiltonian(
+                    self.pool[op_index], n_sites=phi.n_sites,
+                    add_identity=True)
                 phi = phi.time_evolve(time=1j*coeff,
                                       hamiltonian=mpo,
                                       method=method,
                                       steps=4,
                                       add_noise=True,
-                                      block2=False)
+                                      block2=True)
                 if method == "rk4":
                     phi, _ = phi.compress(
                         max_bond_dim=phi.opts["max_bond_dim"],
@@ -200,29 +201,30 @@ class ADAPT():
             assert np.isclose(phi.norm(), 1.0)
             energy = phi.expectationValue(self.hamiltonian).real
             sigma = phi.apply(self.hamiltonian, exact=exact_apply)
-            sigma, _ = sigma.compress(max_bond_dim=sigma.opts["max_bond_dim"],
-                                      cutoff=sigma.opts["cutoff"])
 
             for i in range(-1, -(len(gradients)+1), -1):
                 method = "tddmrg" if abs(i) >= self.rk4_bound else rk4
                 op_index = self.selected_operator_indices[i]
-                mpo, _ = mpo_from_fqe_hamiltonian(
-                    self.pool[op_index], n_sites=phi.n_sites).compress(
-                        cutoff=phi.opts["cutoff"])
+                mpo = mpo_from_fqe_hamiltonian(
+                    self.pool[op_index], n_sites=phi.n_sites,
+                    add_identity=False)
                 gradients[i] = 2.0 * phi.expectationValue(mpo,
                                                           brawfn=sigma).real
+                mpo = mpo_from_fqe_hamiltonian(
+                    self.pool[op_index], n_sites=phi.n_sites,
+                    add_identity=True)
                 phi = phi.time_evolve(time=-1j*coeffs[i],
                                       hamiltonian=mpo,
                                       method=method,
                                       steps=4,
                                       add_noise=True,
-                                      block2=False)
+                                      block2=True)
                 sigma = sigma.time_evolve(time=-1j*coeffs[i],
                                           hamiltonian=mpo,
                                           method=method,
                                           steps=4,
                                           add_noise=True,
-                                          block2=False)
+                                          block2=True)
                 if method == "rk4":
                     phi, _ = phi.compress(
                         max_bond_dim=phi.opts["max_bond_dim"],
@@ -239,18 +241,15 @@ class ADAPT():
         return [x for x in res.x]
 
     def compute_pool_gradients(self, wfn, exact_apply):
-        #divert output
+        # Divert output
         save_stdout = sys.stdout
         sys.stdout = io.StringIO()
 
         grads = np.zeros_like(self.pool)
         H_wfn = wfn.apply(self.hamiltonian, exact=exact_apply)
-        H_wfn, _ = H_wfn.compress(
-            max_bond_dim=wfn.opts["max_bond_dim"],
-            cutoff=wfn.opts["cutoff"])
         for i, op in enumerate(self.pool):
-            mpo, _ = mpo_from_fqe_hamiltonian(
-                op, n_sites=wfn.n_sites).compress(cutoff=wfn.opts["cutoff"])
+            mpo = mpo_from_fqe_hamiltonian(
+                op, n_sites=wfn.n_sites, add_identity=False)
             grads[i] = 2*wfn.expectationValue(mpo, brawfn=H_wfn)
 
         sys.stdout = save_stdout
@@ -261,11 +260,11 @@ class ADAPT():
 if __name__ == '__main__':
     # ADAPT-MPS parameters
     rk4_bound = 0
-    exact_apply = True
+    exact_apply = False
 
     # Molecular parameters
     basis = "6-31g"
-    rs = [1.1 + i*0.2 for i in range(6)]
+    rs = [1.5 + i*0.2 for i in range(6)]
     (h1, h2), e_0, nele, _ = get_N2_parameters(rs[0], basis)
     sz = 0
     assert abs(sz) == 0
@@ -285,26 +284,40 @@ if __name__ == '__main__':
 
     # Do calculation for each of the bond dims
     for bdim in bdims:
-        filename = f"wfn_{bdim}_{basis}.pkl"
-        if os.path.exists(filename):
-            initial_wfn = pickle.load(open(filename, 'rb'))
-        else:
-            # Get the initial wave function
-            (h1, h2), e_0, nele, E_hf = get_N2_parameters(rs[0], basis)
-            fd = FCIDUMP(pg='c1', n_sites=norbs, n_elec=nele, twos=sz, ipg=0,
-                         uhf=False, h1e=h1, g2e=h2, const_e=e_0)
-            ham, _ = Hamiltonian(fd, flat=True).build_qc_mpo().compress(
-                cutoff=cutoff)
-            initial_wfn = get_hf_mps(nele, sz, norbs,
-                                     bdim=bdim,
-                                     cutoff=cutoff,
-                                     dtype=complex)
-            initial_wfn = initial_wfn.time_evolve(-0.1j, ham, steps=10)
-            initial_wfn /= initial_wfn.norm()
-            initial_wfn = MPSWavefunction.from_pyblock3_mps(initial_wfn,
-                                                            cutoff=cutoff,
-                                                            max_bond_dim=bdim)
-            pickle.dump(initial_wfn, open(filename, 'wb'))
+        # filename = f"wfn_{bdim}_{basis}.pkl"
+        # if os.path.exists(filename):
+        #     initial_wfn = pickle.load(open(filename, 'rb'))
+        # else:
+        #     # Get the initial wave function
+        #     (h1, h2), e_0, nele, E_hf = get_N2_parameters(rs[0], basis)
+        #     fd = FCIDUMP(pg='c1', n_sites=norbs, n_elec=nele, twos=sz, ipg=0,
+        #                  uhf=False, h1e=h1, g2e=h2, const_e=e_0)
+        #     ham, _ = Hamiltonian(fd, flat=True).build_qc_mpo().compress(
+        #         cutoff=cutoff)
+        #     initial_wfn = get_hf_mps(nele, sz, norbs,
+        #                              bdim=bdim,
+        #                              cutoff=cutoff,
+        #                              dtype=complex)
+        #     initial_wfn = initial_wfn.time_evolve(-0.1j, ham, steps=20)
+        #     initial_wfn /= initial_wfn.norm()
+        #     initial_wfn = MPSWavefunction.from_pyblock3_mps(initial_wfn,
+        #                                                     cutoff=cutoff,
+        #                                                     max_bond_dim=bdim)
+        #     pickle.dump(initial_wfn, open(filename, 'wb'))
+        hf_mps = get_hf_mps(nele, sz, norbs,
+                            bdim=bdim,
+                            cutoff=cutoff,
+                            dtype=complex)
+        random_mps = get_random_mps(nele, sz, norbs,
+                                    bdim=bdim,
+                                    cutoff=cutoff,
+                                    dtype=complex)
+        initial_wfn = hf_mps + 1e-18*random_mps
+        initial_wfn /= initial_wfn.norm()
+        initial_wfn = MPSWavefunction.from_pyblock3_mps(initial_wfn,
+                                                        cutoff=cutoff,
+                                                        max_bond_dim=bdim)
+        #initial_wfn, _ = initial_wfn.compress(cutoff=cutoff, max_bond_dim=bdim)
         assert initial_wfn.opts["max_bond_dim"] == bdim
         assert initial_wfn.opts["cutoff"] == cutoff
         # Get potential
