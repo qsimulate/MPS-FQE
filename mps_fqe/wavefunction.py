@@ -663,11 +663,11 @@ class MPSWavefunction(MPS):
         n_sub_sweeps = kwargs.get("n_sub_sweeps",
                                   _default_fqe_opts["n_sub_sweeps"])
         add_noise = kwargs.get("add_noise", _default_fqe_opts["add_noise"])
-        noise = 1e-18
 
         bdim = self.opts["max_bond_dim"]
         cutoff = kwargs.get("cutoff", _default_pyblock_opts["cutoff"])
-
+        noise = 1e-10
+        
         iprint = kwargs.get("iprint", 0)
         normalize = kwargs.get("normalize", False)
 
@@ -707,8 +707,9 @@ class MPSWavefunction(MPS):
                                    cutoff=cutoff, iprint=iprint,
                                    normalize_mps=normalize)
             mps = MPSTools.from_block2(b2mps).to_flat()
+            #mps = mps*numpy.exp(1j*time*1e-12)
             if add_noise:
-                mps = mps*numpy.exp(1j*dt*noise)
+                mps = mps*numpy.exp(1j*time*noise)
 
         return type(self)(tensors=mps.tensors, opts=self.opts)
 
