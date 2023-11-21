@@ -5,6 +5,5 @@ mps_fqe
    :maxdepth: 4
 
    hamiltonian
-   hamiltonian
    utils
    wavefunction

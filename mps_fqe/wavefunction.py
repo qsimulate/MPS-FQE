@@ -344,7 +344,7 @@ class MPSWavefunction(MPS):
 
             hamiltonian (MPS): MPO used to generate dynamics.
 
-            **kwargs (keyword arguments): Options to dictate propagation.
+            \*\*kwargs (keyword arguments): Options to dictate propagation.
 
         Returns:
             wfn (MPSWavefunction): The time-evolved MPSWavefunction.
@@ -387,7 +387,7 @@ class MPSWavefunction(MPS):
 
             hamiltonian (MPS): MPO used to generate dynamics.
 
-            **kwargs (keyword arguments): Options to dictate propagation.
+            \*\*kwargs (keyword arguments): Options to dictate propagation.
 
         Returns:
             wfn (MPSWavefunction): The time-evolved MPSWavefunction.
@@ -418,7 +418,7 @@ class MPSWavefunction(MPS):
 
             hamiltonian (MPS): MPO used to generate dynamics.
 
-            **kwargs (keyword arguments): Options to dictate propagation.
+            \*\*kwargs (keyword arguments): Options to dictate propagation.
 
         Returns:
             wfn (MPSWavefunction): The time-evolved MPSWavefunction.
@@ -474,7 +474,7 @@ class MPSWavefunction(MPS):
 
             inplace (bool): Not implemented with the MPS backend.
 
-            **kwargs (keyword arguments): Options to dictate propagation.
+            \*\*kwargs (keyword arguments): Options to dictate propagation.
 
         Returns:
             wfn (MPSWavefunction): The time-evolved MPSWavefunction.
