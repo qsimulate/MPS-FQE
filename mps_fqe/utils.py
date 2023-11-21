@@ -32,7 +32,7 @@ def fqe_sign_change(fqedata: FqeData) -> numpy.ndarray:
 
 def one_body_projection_mpo(isite: int, jsite: int, n_sites: int,
                             flat: bool = True, spinfree: bool = True):
-    """Function to return a one body projection operator MPO, |isite><jsite|.
+    """Function to return a one body projection operator MPO, :math:`|isite\\langle \\rangle jsite|`.
 
     Args:
         isite (int): Site index for the ket.
@@ -76,7 +76,7 @@ def two_body_projection_mpo(isite: int, jsite: int, ksite: int, lsite: int,
                             n_sites: int, flat: bool = True,
                             spinfree: bool = True):
     """Function to return a two body projection operator MPO, \
-    |isite, jsite><ksite, lsite|.
+    :math:`|isite, jsite\\langle \\rangle ksite, lsite|`.
 
     Args:
         isite (int): First site index for the ket.
@@ -124,7 +124,7 @@ def three_body_projection_mpo(isite: int, jsite: int, ksite: int,
                               n_sites: int, flat: bool = True,
                               spinfree: bool = True):
     """Function to return a two body projection operator MPO, \
-    |isite, jsite><ksite, lsite|.
+    :math:`|isite, jsite\\langle \\rangle ksite, lsite|`.
 
     Args:
         isite (int): First site index for the ket.

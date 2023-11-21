@@ -57,7 +57,7 @@ autoclass_content = 'both'
 
 html_theme = 'alabaster'
 html_theme_options = {
-        'description': 'Neural networks for atomistic learning',
+        'description': 'Matrix product state exptension for OpenFermion-FQE',
         'fixed_sidebar': True
 }
 html_sidebars = { '**': ['about.html', 'localtoc.html', 'navigation.html',
@@ -66,4 +66,4 @@ html_sidebars = { '**': ['about.html', 'localtoc.html', 'navigation.html',
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
+html_static_path = []
