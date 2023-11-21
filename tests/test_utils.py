@@ -1,7 +1,7 @@
 import numpy
 import pytest
 
-from mps_fqe.wavefunction import MPSWavefunction, get_hf_mps, get_random_mps
+from mps_fqe.wavefunction import get_random_mps
 from mps_fqe.utils import (one_body_projection_mpo, two_body_projection_mpo,
                            three_body_projection_mpo, apply_fiedler_ordering)
 
@@ -43,7 +43,8 @@ def test_two_body_projection_mpo(nele, sz, norb):
     numpy.random.seed(22)
     mps = get_random_mps(nele, sz, norb, bdim=50)
     p1 = two_body_projection_mpo(iorb, jorb, korb, lorb, norb, spinfree=True)
-    p1aa = two_body_projection_mpo(iorb*2, jorb*2, korb*2, lorb*2, norb, spinfree=False)
+    p1aa = two_body_projection_mpo(
+        iorb*2, jorb*2, korb*2, lorb*2, norb, spinfree=False)
     p1bb = two_body_projection_mpo(
         iorb*2 + 1, jorb*2 + 1, korb*2 + 1, lorb*2 + 1, norb, spinfree=False)
     p1ab = two_body_projection_mpo(
@@ -72,7 +73,8 @@ def test_three_body_projection_mpo(nele, sz, norb):
     zorb = 0
     numpy.random.seed(22)
     mps = get_random_mps(nele, sz, norb, bdim=50)
-    p1 = three_body_projection_mpo(iorb, jorb, korb, lorb, morb, zorb, norb, spinfree=True)
+    p1 = three_body_projection_mpo(
+        iorb, jorb, korb, lorb, morb, zorb, norb, spinfree=True)
     p1aaa = three_body_projection_mpo(
         iorb*2, jorb*2, korb*2, lorb*2, morb*2, zorb*2, norb, spinfree=False)
     p1bbb = three_body_projection_mpo(
@@ -113,9 +115,9 @@ def test_fiedler_order():
         bonds.add((i, j))
         h2[i, i, i, i] = 1
         h2[j, j, j, j] = 1
-        h2[i, j, j, i] = -1 
-        h2[j, i, i, j] = -1 
-    
+        h2[i, j, j, i] = -1
+        h2[j, i, i, j] = -1
+
     _, _, out = apply_fiedler_ordering(h1, h2)
     obonds = set()
     for ii, i in enumerate(out[:-1]):
