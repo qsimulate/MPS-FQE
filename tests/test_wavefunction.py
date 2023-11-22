@@ -175,6 +175,32 @@ def test_expectationValue():
     assert abs(ref_de - mps_de) < tol
 
 
+def test_print_wfn(capsys):
+    nele = 2
+    sz = 0
+    norb = 2
+    numpy.random.seed(20)
+    mps = get_random_mps(nele, sz, norb, bdim=4)
+    mps.print_wfn()
+
+    out, err = capsys.readouterr()
+    ref = \
+"""TENSOR 0
+  0 (Q=) (< N=0 SZ=0 PG=0 >, < N=0 SZ=0 PG=0 >, < N=0 SZ=0 PG=0 >) (R=) array([[[0.5881308]]])
+  1 (Q=) (< N=0 SZ=0 PG=0 >, < N=1 SZ=-1/2 PG=0 >, < N=1 SZ=-1/2 PG=0 >) (R=) array([[[0.89771373]]])
+  2 (Q=) (< N=0 SZ=0 PG=0 >, < N=1 SZ=1/2 PG=0 >, < N=1 SZ=1/2 PG=0 >) (R=) array([[[0.89153073]]])
+  3 (Q=) (< N=0 SZ=0 PG=0 >, < N=2 SZ=0 PG=0 >, < N=2 SZ=0 PG=0 >) (R=) array([[[0.81583748]]])
+TENSOR 1
+  0 (Q=) (< N=0 SZ=0 PG=0 >, < N=2 SZ=0 PG=0 >, < N=2 SZ=0 PG=0 >) (R=) array([[[0.03588959]]])
+  1 (Q=) (< N=1 SZ=-1/2 PG=0 >, < N=1 SZ=1/2 PG=0 >, < N=2 SZ=0 PG=0 >) (R=) array([[[0.69175758]]])
+  2 (Q=) (< N=1 SZ=1/2 PG=0 >, < N=1 SZ=-1/2 PG=0 >, < N=2 SZ=0 PG=0 >) (R=) array([[[0.37868094]]])
+  3 (Q=) (< N=2 SZ=0 PG=0 >, < N=0 SZ=0 PG=0 >, < N=2 SZ=0 PG=0 >) (R=) array([[[0.51851095]]])
+BOND DIMENSIONS
+1|4|1
+"""
+    assert ref == out
+
+
 def test_transform():
     nele, sz, norb = 4, 0, 4
     mps = get_hf_mps(nele, sz, norb, bdim=50)

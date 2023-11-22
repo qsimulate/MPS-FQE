@@ -200,12 +200,12 @@ def apply_fiedler_ordering(h1, h2):
         ee, ev = numpy.linalg.eigh(lmat)
         assert abs(ee[0] < 1E-12)
         factor = 1.0
-        for x in ev[1]:
+        for x in ev[:,1]:
             if abs(x) > 1E-12:
                 factor = 1 if x > 0 else -1
                 break
 
-        sort_key = factor*ev[1]
+        sort_key = factor*ev[:, 1]
         order = list(range(n))
         return sorted(order, key=lambda x: sort_key[x])
 

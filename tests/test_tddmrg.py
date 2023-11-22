@@ -73,7 +73,6 @@ def test_sparse_operator_evolve(time_axis, strategy):
     sz = 0
     steps = 1
     n_sub_sweeps = 1
-    max_bond_dim = 4 ** (norbs+1 // 2)
     add_noise = strategy == "hartree-fock"
     hermitian = time_axis == "real"
 

@@ -1,7 +1,8 @@
 import numpy
 import pytest
 import fqe
-from mps_fqe.wavefunction import MPSWavefunction
+from mps_fqe.wavefunction import MPSWavefunction, get_random_mps
+from mps_fqe.hamiltonian import mpo_from_fqe_hamiltonian
 fqe.settings.use_accelerated_code = False
 
 
@@ -64,6 +65,53 @@ def test_rdm3(n_electrons, sz, n_orbitals):
     assert numpy.allclose(mps.rdm('i^ j^ k^ l m n', block2=False),
                           fqe_wfn.rdm('i^ j^ k^ l m n'),
                           atol=1E-12)
+
+
+@pytest.mark.parametrize("nele,sz,norb", [(6, -2, 4),
+                                          (6, 2, 4),
+                                          (2, 2, 4),
+                                          (5, 1, 4)])
+def test_gen_rdm1(nele, sz, norb):
+    numpy.random.seed(11)
+    mps = get_random_mps(nele, sz, norb, bdim=50)
+    h1 = numpy.random.random((norb, norb))
+    h1 += h1.transpose()
+    hamiltonian = fqe.get_restricted_hamiltonian((h1,),
+                                                 e_0=0)
+
+    mpo = mpo_from_fqe_hamiltonian(fqe_ham=hamiltonian)
+    ref = mps.expectationValue(mpo)
+    rdm1 = mps.rdm('i^ j', block2=False)
+    out = numpy.einsum('ij,ij', rdm1, h1)
+    assert abs(ref - out) < 1e-12
+
+
+@pytest.mark.parametrize("nele,sz,norb", [(6, -2, 4),
+                                          (6, 2, 4),
+                                          (2, 2, 4),
+                                          (5, 1, 4)])
+def test_gen_rdm2(nele, sz, norb):
+    numpy.random.seed(22)
+    mps = get_random_mps(nele, sz, norb, bdim=50)
+
+    # eight-fold symmetry for real 2-electron operator
+    h2 = numpy.random.random((norb, norb, norb, norb))
+    h2 += h2.transpose((1, 0, 3, 2))
+    h2 += h2.transpose((0, 1, 3, 2))
+    h2 += h2.transpose((1, 0, 2, 3))
+    h2 += h2.transpose((2, 3, 0, 1))
+    h2 += h2.transpose((3, 2, 1, 0))
+    h2 += h2.transpose((2, 3, 1, 0))
+    h2 += h2.transpose((3, 2, 0, 1))
+
+    hamiltonian = fqe.get_restricted_hamiltonian(
+        (numpy.zeros((norb, norb)), h2), e_0=0)
+
+    mpo = mpo_from_fqe_hamiltonian(fqe_ham=hamiltonian)
+    ref = mps.expectationValue(mpo)
+    rdm1 = mps.rdm('i^ j^ k l', block2=False)
+    out = numpy.einsum('ijkl,ijkl', rdm1, h2)
+    assert abs(ref - out) < 1e-12
 
 
 def test_rdm_exceptions():
