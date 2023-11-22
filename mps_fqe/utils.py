@@ -123,7 +123,7 @@ def three_body_projection_mpo(isite: int, jsite: int, ksite: int,
                               lsite: int, msite: int, nsite: int,
                               n_sites: int, flat: bool = True,
                               spinfree: bool = True):
-    """Function to return a two body projection operator MPO, \
+    """Function to return a three body projection operator MPO, \
     :math:`|i, j, k\\rangle \\langle l, m, n|`.
 
     Args:
