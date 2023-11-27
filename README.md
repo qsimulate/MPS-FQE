@@ -2,17 +2,7 @@
 The Matrix Product State Fermionic Quantum Emulator (MPS-FQE) delivers a matrix product state backend to the [Openfermion-FQE](https://github.com/quantumlib/OpenFermion-FQE) fermionic circuit simulator.
 
 ## Getting Started
-(NOT CORRECT STATEMENT)
 Installing MPS-FQE can be done via `pip install mps-fqe`.
-
-## How to contribute
-(SHOULD THIS BE THE SAME AS FQE CONTRIBUTIONS GUIDELINES?)
-We'd love to accept your contributions and patches to MPS-FQE. 
-There are a few small guidelines you need to follow. 
-Contributions to MPS-FQE must be accompanied by a Contributor License Agreement. 
-You (or your employer) retain the copyright to your contribution, this simply gives us permission 
-to use and redistribute your contributions as part of the project. 
-Head over to https://cla.developers.google.com/ to see your current agreements on file or to sign a new one.
 
 All submissions, including submissions by project members, require review. 
 We use GitHub pull requests for this purpose. Consult GitHub Help for more information on using pull requests. 
@@ -26,25 +16,20 @@ We use Github issues for tracking requests and bugs.
 
 ## Authors
 __QSimulate__:\
-Alec White, Justin Provazza, Klaas Gunst
+Alec F. White, Justin Provazza, Klaas Gunst
 
-__Google Quantum AI__:\
-Nicholas C. Rubin
-
-__Caltech__:\
-Huanchen Zhai, Garnet Chan
 
 ## How to cite
-When using OpenFermion-FQE for research projects, please cite:
+When using MPS-FQE for research projects, please cite:
 
 ```
-@misc{fqe_2021,
+@article{mps_fqe_2023,
     author       = {Justin Provazza, Klaas Gunst, Huanchen Zhai, Garnet K.-L. Chan,
     		    Toru Shiozaki, Nicholas C. Rubin, and Alec F. White },
-    title        = {A Matrix Product State Backend for the Fermionic Quantum Emulator, version 0.1.0},
+    title        = {Fast emulation of Fermionic circuits with matrix product states},
     month        = {December},
     year         = {2023},
-    url          = {https://github.com/qsimulate/MPS-FQE} 
+    url          = {EVENTUAL ARXIV URL}
     }
 ```
 
