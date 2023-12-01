@@ -20,7 +20,7 @@ from mps_fqe.wavefunction import get_hf_mps, get_random_mps,\
 from mps_fqe.hamiltonian import mpo_from_fqe_hamiltonian
 
 
-def get_N2_parameters(r, basis='sto6g'):
+def get_N2_parameters(r, basis='sto3g'):
     geom = "{}\t{}\t{}\t{}\n".format("N", 0, 0, 0)
     geom += "{}\t{}\t{}\t{}\n".format("N", r, 0, 0)
     mol = gto.M(atom=geom, basis=basis, verbose=0)
@@ -99,7 +99,8 @@ class ADAPT():
                  force_norm_thresh: float = 1E-3,
                  max_iteration: int = 100,
                  rk4_bound: int = 0,
-                 verbose: bool = True):
+                 verbose: bool = True,
+                 finite_difference: bool = True):
         self.hamiltonian = hamiltonian
         self.force_norm_thresh = force_norm_thresh
         self.max_iteration = max_iteration
@@ -110,9 +111,13 @@ class ADAPT():
         self.energies = []
         self.pool = op_pool.op_pool
         self.verbose = verbose
+        self.finite_difference = finite_difference
 
     def run(self, initial_wfn: MPSWavefunction, exact_apply: bool = True):
         iteration = 0
+        mbd = initial_wfn.opts["max_bond_dim"]
+        cutoff = initial_wfn.opts["cutoff"]
+        print(mbd, cutoff)
         rk4 = "rk4" if exact_apply else "rk4-linear"
         if self.verbose:
             with open("ADAPT.log", 'a') as fout:
@@ -125,7 +130,6 @@ class ADAPT():
         while iteration < self.max_iteration:
             # Get the initial state
             wfn = deepcopy(initial_wfn)
-
             # Evolve with the selected set of operators with current coeffs
             for i, coeff in enumerate(self.selected_operator_coefficients):
                 method = "tddmrg" if i >= self.rk4_bound else rk4
@@ -147,6 +151,8 @@ class ADAPT():
                     wfn, _ = wfn.compress(
                         max_bond_dim=wfn.opts["max_bond_dim"],
                         cutoff=wfn.opts["cutoff"])
+                    wfn.opts["max_bond_dim"] = mbd
+                    wfn.opts["cutoff"] = cutoff
 
             self.energies.append(wfn.expectationValue(self.hamiltonian).real)
 
@@ -169,7 +175,6 @@ class ADAPT():
             self.selected_operator_coefficients.append(0.0)
 
             # Perform the optimization
-            # if iteration > 0:
             self.selected_operator_coefficients \
                 = self.optimize_coefficients(initial_wfn, exact_apply)
             iteration += 1
@@ -186,6 +191,9 @@ class ADAPT():
         rk4 = "rk4" if exact_apply else "rk4-linear"
 
         def cost_function(coeffs):
+            mbd = initial_wfn.opts["max_bond_dim"]
+            cutoff = initial_wfn.opts["cutoff"]
+            print(mbd, cutoff)
             phi = deepcopy(initial_wfn)
             gradients = np.zeros_like(coeffs)
             for i, coeff in enumerate(coeffs):
@@ -208,10 +216,15 @@ class ADAPT():
                     phi, _ = phi.compress(
                         max_bond_dim=phi.opts["max_bond_dim"],
                         cutoff=phi.opts["cutoff"])
+                    phi.opts["max_bond_dim"] = mbd
+                    phi.opts["cutoff"] = cutoff
+                
             assert np.isclose(phi.norm(), 1.0)
             energy = phi.expectationValue(self.hamiltonian).real
-            sigma = phi.apply(self.hamiltonian, exact=False)
+            if self.finite_difference:
+                return energy
 
+            sigma = phi.apply(self.hamiltonian, exact=False)
             for i in range(-1, -(len(gradients)+1), -1):
                 method = "tddmrg" if abs(i) >= self.rk4_bound else rk4
                 op_index = self.selected_operator_indices[i]
@@ -239,19 +252,20 @@ class ADAPT():
                                           steps=steps,
                                           add_noise=True,
                                           block2=True)
-                if method == "rk4":
-                    phi, _ = phi.compress(
-                        max_bond_dim=phi.opts["max_bond_dim"],
-                        cutoff=phi.opts["cutoff"])
-                    sigma, _ = sigma.compress(
-                        max_bond_dim=sigma.opts["max_bond_dim"],
-                        cutoff=sigma.opts["cutoff"])
+                # if method == "rk4":
+                #     phi, _ = phi.compress(
+                #         max_bond_dim=phi.opts["max_bond_dim"],
+                #         cutoff=phi.opts["cutoff"])
+                #     sigma, _ = sigma.compress(
+                #         max_bond_dim=sigma.opts["max_bond_dim"],
+                #         cutoff=sigma.opts["cutoff"])
             return (energy, np.array(gradients, order="F"))
 
+        jac = self.finite_difference == False
         res = sp.optimize.minimize(cost_function,
                                    self.selected_operator_coefficients,
-                                   method="L-BFGS-B",
-                                   jac=True)
+                                   method="BFGS",
+                                   jac=jac)
         return [x for x in res.x]
 
     def compute_pool_gradients(self, wfn, exact_apply):
@@ -289,10 +303,6 @@ class ADAPT():
                                                steps=steps,
                                                block2=False)
             print(time.perf_counter() - tnot)
-            evolved1.scale(1/evolved1.norm())
-            evolved1, _ = evolved1.compress(
-                max_bond_dim=evolved1.opts["max_bond_dim"],
-                cutoff=evolved1.opts["cutoff"])   
 
             tnot = time.perf_counter()
             steps = steps+20
@@ -302,11 +312,6 @@ class ADAPT():
                                                method="rk4",
                                                steps=steps)
             print(time.perf_counter() - tnot)
-            evolved2.scale(1/evolved2.norm())
-
-            evolved2, _ = evolved2.compress(
-                max_bond_dim=evolved2.opts["max_bond_dim"],
-                cutoff=evolved2.opts["cutoff"])
 
             assert np.isclose(evolved1.norm(), 1)
             assert np.isclose(evolved2.norm(), 1)
@@ -326,7 +331,7 @@ if __name__ == '__main__':
 
     # Molecular parameters
     basis = "6-31g"
-    rs = [1.3 + i*0.2 for i in range(6)]
+    rs = [0.9 + i*0.2 for i in range(6)]
     (h1, h2), e_0, nele, _ = get_N2_parameters(rs[0], basis)
     sz = 0
     assert abs(sz) == 0
@@ -341,37 +346,11 @@ if __name__ == '__main__':
     op_pool.two_body_sz_adapted()
 
     # MPSWavefunction parameters
-    bdims = [100, 200, 300, 400]
-    cutoff = 1E-14
+    bdims = [100]
+    cutoff = 1e-20
 
     # Do calculation for each of the bond dims
     for bdim in bdims:
-        # filename = f"wfn_{bdim}_{basis}.pkl"
-        # if os.path.exists(filename):
-        #     initial_wfn = pickle.load(open(filename, 'rb'))
-        # else:
-        #     (h1, h2), e_0, nele, E_hf = get_N2_parameters(rs[0], basis)
-        #     fd = FCIDUMP(pg='c1', n_sites=norbs, n_elec=nele, twos=sz, ipg=0,
-        #                  uhf=False, h1e=h1, g2e=h2, const_e=e_0)
-        #     ham, _ = Hamiltonian(fd, flat=True).build_qc_mpo().compress(
-        #         cutoff=cutoff)
-        #     initial_wfn = get_hf_mps(nele, sz, norbs,
-        #                              bdim=bdim,
-        #                              cutoff=cutoff,
-        #                              dtype=complex)
-        #     hf_e = initial_wfn.expectationValue(ham)
-        #     mpe = MPE(initial_wfn, ham, initial_wfn)
-        #     bdims = [bdim]
-        #     noises = [1E-6, 1E-7, 1E-8, 1E-10, 1E-12]
-        #     cutoff=1E-16
-        #     dmrg = mpe.dmrg(bdims=bdims, noises=noises, cutoff=cutoff,
-        #                     iprint=2, n_sweeps=1)
-        #     E0 = dmrg.energies[-1]
-        #     pickle.dump(initial_wfn, open(filename, 'wb'))
-        # initial_wfn = MPSWavefunction.from_pyblock3_mps(initial_wfn,
-        #                                                 cutoff=cutoff,
-        #                                                 max_bond_dim=bdim)
-        # initial_wfn, _ = initial_wfn.compress(cutoff=cutoff, max_bond_dim=bdim)
         initial_wfn = get_hf_mps(nele, sz, norbs,
                                  bdim=bdim,
                                  cutoff=cutoff,
