@@ -5,9 +5,9 @@ version = "0.0.0"
 authors = [ { name = "QSimulate" } ]
 
 dependencies = [
-    "fqe",
-    "block2",
-    "pyblock3",
+    "fqe>=0.3.0",
+    "block2>=0.5.2",
+    "pyblock3>=0.2.9rc3"
 ]
 
 [project.optional-dependencies]
@@ -36,7 +36,7 @@ filterwarnings = ["ignore:Please Use `OptimizeResult`.*:DeprecationWarning"]
 [[tool.mypy.overrides]]
 module = [
     "fqe.*",
-    "pyblock2.*",    
+    "pyblock2.*",
     "pyblock3.*",
     "openfermion.*",
     "openfermionpyscf",
