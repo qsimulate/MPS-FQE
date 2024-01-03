@@ -32,7 +32,7 @@ When using MPS-FQE for research projects, please cite:
     title        = {Fast emulation of Fermionic circuits with matrix product states},
     month        = {December},
     year         = {2023},
-    url          = {EVENTUAL ARXIV URL}
+    url          = {https://doi.org/10.48550/arXiv.2312.17657}
     }
 ```
 
