@@ -28,7 +28,7 @@ When using MPS-FQE for research projects, please cite:
 ```
 @article{mps_fqe_2023,
     author       = {Justin Provazza, Klaas Gunst, Huanchen Zhai, Garnet K.-L. Chan,
-    		    Toru Shiozaki, Nicholas C. Rubin, and Alec F. White },
+    		    Toru Shiozaki, Nicholas C. Rubin, and Alec F. White},
     title        = {Fast emulation of fermionic circuits with matrix product states},
     month        = {December},
     year         = {2023},
