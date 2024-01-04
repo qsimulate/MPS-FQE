@@ -20,8 +20,10 @@ We use Github issues for tracking requests and bugs.
 ## Collaborators
 __QSimulate__:\
 Alec F. White, Justin Provazza, Klaas Gunst
+
 __Google__:\
 Nicholas C. Rubin
+
 __California Institute of Technology__:\
 Huanchen Zhai
 
