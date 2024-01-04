@@ -2,7 +2,7 @@
 The Matrix Product State Fermionic Quantum Emulator (MPS-FQE) delivers a matrix product state backend to the [Openfermion-FQE](https://github.com/quantumlib/OpenFermion-FQE) fermionic circuit simulator.
 
 ## Getting Started
-Installing MPS-FQE can be done by executing `pip install --extra-index-url=https://block-hczhai.github.io/pyblock3-preview/pypi/ .` in the current directory.
+Installing MPS-FQE can be done by executing the `install.sh` script in the current directory.
 
 MPS-FQE depends on [block2](https://github.com/block-hczhai/block2-preview/) v>=0.5.2, [pyblock3](https://github.com/block-hczhai/pyblock3-preview/) v>=0.2.9rc3, and [Openfermion-FQE](https://github.com/quantumlib/OpenFermion-FQE) v >= 0.3.0.
 
@@ -17,10 +17,13 @@ Code should always come with documentation, which is generated automatically and
 
 We use Github issues for tracking requests and bugs. 
 
-## Authors
+## Collaborators
 __QSimulate__:\
 Alec F. White, Justin Provazza, Klaas Gunst
-
+__Google__:\
+Nicholas C. Rubin
+__California Institute of Technology__:\
+Huanchen Zhai
 
 ## How to cite
 When using MPS-FQE for research projects, please cite:
@@ -35,6 +38,3 @@ When using MPS-FQE for research projects, please cite:
     url          = {https://doi.org/10.48550/arXiv.2312.17657}
     }
 ```
-
-## Disclaimer
-Copyright 2022-2023 Quantum Simulation Technologies, Inc. This is not an official QSimulate product.
