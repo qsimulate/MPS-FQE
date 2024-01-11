@@ -4,7 +4,7 @@ The Matrix Product State Fermionic Quantum Emulator (MPS-FQE) delivers a matrix 
 ## Getting Started
 Installing MPS-FQE can be done by executing the `install.sh` script in the current directory.
 
-MPS-FQE depends on [block2](https://github.com/block-hczhai/block2-preview/) v>=0.5.2, [pyblock3](https://github.com/block-hczhai/pyblock3-preview/) v>=0.2.9rc3, and [Openfermion-FQE](https://github.com/quantumlib/OpenFermion-FQE) v >= 0.3.0.
+MPS-FQE depends on [block2](https://github.com/block-hczhai/block2-preview/) v>=0.5.2, [pyblock3](https://github.com/block-hczhai/pyblock3-preview/) v>=0.2.9rc4, and [Openfermion-FQE](https://github.com/quantumlib/OpenFermion-FQE) v >= 0.3.0.
 
 
 All submissions, including submissions by project members, require review. 
