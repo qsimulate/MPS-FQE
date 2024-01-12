@@ -708,7 +708,7 @@ class MPSWavefunction(MPS):
                                    normalize_mps=normalize)
             mps = MPSTools.from_block2(b2mps).to_flat()
             if add_noise:
-                mps = mps*numpy.exp(1j*dt*noise)
+                mps = mps*numpy.exp(1j*time*noise)
 
         return type(self)(tensors=mps.tensors, opts=self.opts)
 
