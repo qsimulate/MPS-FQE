@@ -44,5 +44,6 @@ jobs:
         if [ "$CPUTYPE" = "AuthenticAMD" ]; then
           export LD_PRELOAD=$PWD/libfixcpu.so
         fi
+        pip install openfermionpyscf
         pip install pytest
         pytest -s tests
