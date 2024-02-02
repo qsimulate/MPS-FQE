@@ -111,6 +111,7 @@ class ADAPT():
         if self.verbose:
             with open("ADAPT.log", 'a') as fout:
                 fout.write("Reached max iteration before convergence\n")
+        return iteration, self.energies[-1]
 
     def optimize_coefficients(self, initial_wfn: MPSWavefunction):
         # Define cost function
@@ -151,7 +152,7 @@ class ADAPT():
                                    self.selected_operator_coefficients,
                                    method="BFGS",
                                    jac=True)
-        return [x for x in res.x]
+        return list(res.x)
 
     def compute_pool_gradients(self, wfn):
         # Divert output
