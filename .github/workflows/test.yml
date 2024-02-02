@@ -25,6 +25,8 @@ jobs:
         pip install mkl==2021.4 mkl-include
         pip install --extra-index-url=https://block-hczhai.github.io/pyblock3-preview/pypi/ .
     - name: Test with pytest
+      env:
+        MKLROOT: ~/.local
       run: |
         pip install pytest
         pytest -s tests
