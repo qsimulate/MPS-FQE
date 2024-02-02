@@ -1,0 +1,49 @@
+name: Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.10']
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install with dependencies
+      env:
+        MKLROOT: ~/.local
+      run: |
+        python -m pip install --upgrade pip
+        pip install mkl==2021.4 mkl-include
+        pip install --extra-index-url=https://block-hczhai.github.io/pyblock3-preview/pypi/ .
+    - name: fix mkl for amd cpu
+      run: |
+        lscpu
+        export CPUTYPE=$(lscpu | grep 'Vendor ID' | awk '{print $3}')
+        echo $CPUTYPE
+        if [ "$CPUTYPE" = "AuthenticAMD" ]; then
+          echo "int mkl_serv_intel_cpu_true() { return 1; }" > fixcpu.c
+          gcc -shared -fPIC -o libfixcpu.so fixcpu.c
+        fi
+        getconf LONG_BIT
+    - name: Test with pytest
+      env:
+        MKLROOT: ~/.local
+      run: |
+        export CPUTYPE=$(lscpu | grep 'Vendor ID' | awk '{print $3}')
+        if [ "$CPUTYPE" = "AuthenticAMD" ]; then
+          export LD_PRELOAD=$PWD/libfixcpu.so
+        fi
+        pip install openfermionpyscf
+        pip install pytest
+        pytest tests

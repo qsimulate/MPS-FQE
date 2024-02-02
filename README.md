@@ -1,6 +1,8 @@
 # MPS-FQE
 The Matrix Product State Fermionic Quantum Emulator (MPS-FQE) delivers a matrix product state backend to the [Openfermion-FQE](https://github.com/quantumlib/OpenFermion-FQE) fermionic circuit simulator.
 
+[![Tests](https://github.com/qsimulate/MPS-FQE/workflows/Tests/badge.svg)](https://github.com/qsimulate/MPS-FQE/actions/workflows/test.yml)
+
 ## Getting Started
 Installing MPS-FQE can be done by executing the `install.sh` script in the current directory.
 
