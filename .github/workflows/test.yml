@@ -22,6 +22,7 @@ jobs:
     - name: Install with dependencies
       run: |
         python -m pip install --upgrade pip
+        pip install mkl==2021.4 mkl-include
         pip install --extra-index-url=https://block-hczhai.github.io/pyblock3-preview/pypi/ .
     - name: Test with pytest
       run: |
