@@ -27,7 +27,6 @@ jobs:
         pip install mkl==2021.4 mkl-include
         pip install --extra-index-url=https://block-hczhai.github.io/pyblock3-preview/pypi/ .
     - name: fix mkl for amd cpu
-      if: matrix.os == 'ubuntu-latest'
       run: |
         lscpu
         export CPUTYPE=$(lscpu | grep 'Vendor ID' | awk '{print $3}')
