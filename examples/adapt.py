@@ -1,24 +1,24 @@
 import io
 import sys
-from itertools import product
 from copy import deepcopy
 
 import scipy as sp
 import numpy as np
 from pyscf import ao2mo, scf, gto, fci
-import openfermion as of
 from pyblock3.algebra.mps import MPS
 from pyblock3.fcidump import FCIDUMP
 from pyblock3.hamiltonian import Hamiltonian
 from fqe.hamiltonians.sparse_hamiltonian import SparseHamiltonian
+from fqe.algorithm.adapt_vqe import OperatorPool as FQEOperatorPool
 from mps_fqe.wavefunction import MPSWavefunction, get_hf_mps
 
 
-def get_H2_parameters(r, basis='sto3g'):
-    geom = "{}\t{}\t{}\t{}\n".format("H", 0, 0, 0)
-    geom += "{}\t{}\t{}\t{}\n".format("H", r, 0, 0)
-    geom += "{}\t{}\t{}\t{}\n".format("H", 2*r, 0, 0)
-    geom += "{}\t{}\t{}\t{}\n".format("H", 3*r, 0, 0)
+def get_H_chain_parameters(r: float,
+                           num_H: int = 4,
+                           basis: str = 'sto3g'):
+    geom = ""
+    for i in range(num_H):
+        geom += "{}\t{}\t{}\t{}\n".format("H", i*r, 0, 0)
     mol = gto.M(atom=geom, basis=basis, verbose=0)
     mf = scf.RHF(mol)
     mf.kernel()
@@ -31,74 +31,23 @@ def get_H2_parameters(r, basis='sto3g'):
     return (h1, h2), e_0, nele, mf.e_tot, fci_energy
 
 
-class OperatorPool:
-    def __init__(self, norbs: int, occ: list[int], virt: list[int]):
-        """
-        Routines for defining operator pools
-
-        Args:
-            norbs: number of spatial orbitals
-            occ: list of indices of the occupied orbitals
-            virt: list of indices of the virtual orbitals
-        """
-        self.norbs = norbs
-        self.occ = occ
-        self.virt = virt
-        self.op_pool: list[SparseHamiltonian] = []
-
-    def two_body_sz_adapted(self):
-        """
-        Doubles generators each with distinct Sz expectation value.
-
-        G^{isigma, jtau, ktau, lsigma) for sigma, tau in 0, 1
-        """
-        for i, j, k, l in product(range(self.norbs), repeat=4):
-            if i < j and k < l:
-                op_aa = ((2 * i, 1), (2 * j, 1), (2 * k, 0), (2 * l, 0))
-                op_bb = ((2 * i + 1, 1), (2 * j + 1, 1), (2 * k + 1, 0),
-                         (2 * l + 1, 0))
-                fop_aa = of.FermionOperator(op_aa)
-                fop_aa = fop_aa - of.hermitian_conjugated(fop_aa)
-                fop_bb = of.FermionOperator(op_bb)
-                fop_bb = fop_bb - of.hermitian_conjugated(fop_bb)
-                fop_aa = of.normal_ordered(fop_aa)
-                fop_bb = of.normal_ordered(fop_bb)
-                self.op_pool.append(SparseHamiltonian(fop_aa))
-                self.op_pool.append(SparseHamiltonian(fop_bb))
-
-            op_ab = ((2 * i, 1), (2 * j + 1, 1), (2 * k + 1, 0), (2 * l, 0))
-            fop_ab = of.FermionOperator(op_ab)
-            fop_ab = fop_ab - of.hermitian_conjugated(fop_ab)
-            fop_ab = of.normal_ordered(fop_ab)
-            if not np.isclose(fop_ab.induced_norm(), 0):
-                self.op_pool.append(SparseHamiltonian(fop_ab))
-
-    def one_body_sz_adapted(self):
-        """alpha-alpha and beta-beta rotations
-        """
-        for i, j in product(range(self.norbs), repeat=2):
-            if i > j:
-                op_aa = ((2 * i, 1), (2 * j, 0))
-                op_bb = ((2 * i + 1, 1), (2 * j + 1, 0))
-                fop_aa = of.FermionOperator(op_aa)
-                fop_aa = fop_aa - of.hermitian_conjugated(fop_aa)
-                fop_bb = of.FermionOperator(op_bb)
-                fop_bb = fop_bb - of.hermitian_conjugated(fop_bb)
-                fop_aa = of.normal_ordered(fop_aa)
-                fop_bb = of.normal_ordered(fop_bb)
-                self.op_pool.append(SparseHamiltonian(fop_aa))
-                self.op_pool.append(SparseHamiltonian(fop_bb))
+class OperatorPool(FQEOperatorPool):
+    def to_fqe_operators(self):
+        for i, op in enumerate(self.op_pool):
+            self.op_pool[i] = SparseHamiltonian(op)
 
 
 class ADAPT():
     def __init__(self, hamiltonian: MPS,
                  op_pool: OperatorPool,
-                 force_norm_thresh: float = 1E-3,
+                 force_norm_thresh: float = 1E-2,
+                 energy_thresh: float = 1E-6,
                  max_iteration: int = 100,
                  prop_steps: int = 8,
                  verbose: bool = True):
         self.hamiltonian = hamiltonian
         self.force_norm_thresh = force_norm_thresh
+        self.e_thresh = energy_thresh
         self.max_iteration = max_iteration
         self.selected_operator_indices = []
         self.selected_operator_coefficients = []
@@ -144,8 +93,10 @@ class ADAPT():
                            f"{self.force_vec_norms[iteration]}\n")
 
             # If converged, end simulation
-            if self.force_vec_norms[-1] < self.force_norm_thresh:
-                return iteration, self.energies[-1]
+            if iteration > 0:
+                if self.force_vec_norms[-1] < self.force_norm_thresh \
+                   or abs(self.energies[-1]-self.energies[-2]) < self.e_thresh:
+                    return iteration, self.energies[-1]
 
             # Identify the largest magnitude
             maxval_index = np.argmax(np.abs(gradients))
@@ -175,7 +126,6 @@ class ADAPT():
                     phi, _ = phi.compress(
                         max_bond_dim=initial_wfn.opts["max_bond_dim"],
                         cutoff=initial_wfn.opts["cutoff"])
-
             energy = phi.expectationValue(self.hamiltonian).real
             sigma = phi.apply_linear(self.hamiltonian, n_sweeps=8)
             for i in range(-1, -(len(gradients)+1), -1):
@@ -222,7 +172,7 @@ if __name__ == '__main__':
     # Molecular parameters
     basis = "sto3g"
     rs = [0.9, 1.1, 1.3, 1.5, 1.7]
-    (h1, h2), e_0, nele, _, _ = get_H2_parameters(rs[0], basis)
+    (h1, h2), e_0, nele, _, _ = get_H_chain_parameters(rs[0], basis=basis)
     norbs = len(h1[0])
     nocc = nele//2
     occ = list(range(nocc))
@@ -233,10 +183,11 @@ if __name__ == '__main__':
     op_pool = OperatorPool(norbs, occ, virt)
     op_pool.one_body_sz_adapted()
     op_pool.two_body_sz_adapted()
+    op_pool.to_fqe_operators()
 
     # MPSWavefunction parameters
-    bdims = [20, 50]
-    cutoff = 1e-20
+    bdims = [10]
+    cutoff = 0
     # Do calculation for each of the bond dims
     for bdim in bdims:
         initial_wfn = get_hf_mps(nele, sz, norbs,
@@ -245,8 +196,8 @@ if __name__ == '__main__':
                                  dtype=complex)
         # Get potential
         for r in rs:
-            (h1, h2), e_0, nele, E_hf, E_fci = get_H2_parameters(r, basis)
-            print(E_hf, E_fci)
+            (h1, h2), e_0, nele, E_hf, E_fci = \
+                get_H_chain_parameters(r, basis=basis)
             fd = FCIDUMP(pg='c1', n_sites=norbs, n_elec=nele, twos=sz, ipg=0,
                          uhf=False, h1e=h1, g2e=h2, const_e=e_0)
             ham, _ = Hamiltonian(fd, flat=True).build_qc_mpo().compress(
