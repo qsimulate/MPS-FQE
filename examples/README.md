@@ -12,12 +12,14 @@
   - Performs an ADAPT-VQE simulation on a 4-member Hydrogen chain under truncated bond dimension using RK4 propagation.
 
 ```
-@article{mps_fqe_2023,
-    author       = {Justin Provazza, Klaas Gunst, Huanchen Zhai, Garnet K.-L. Chan,
-    		    Toru Shiozaki, Nicholas C. Rubin, and Alec F. White},
-    title        = {Fast emulation of fermionic circuits with matrix product states},
-    month        = {December},
-    year         = {2023},
-    url          = {https://doi.org/10.48550/arXiv.2312.17657}
-    }
+@article{mps_fqe_2024,
+  title={Fast emulation of fermionic circuits with matrix product states},
+  author={Provazza, Justin and Gunst, Klaas and Zhai, Huanchen and Chan, Garnet K-L and Shiozaki, Toru and Rubin, Nicholas C and White, Alec F},
+  journal={Journal of Chemical Theory and Computation},
+  volume={20},
+  number={9},
+  pages={3719--3728},
+  year={2024},
+  publisher={ACS Publications}
+}
 ```
