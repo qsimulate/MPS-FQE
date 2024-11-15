@@ -112,7 +112,7 @@ def get_sparse_mpo(fqe_ham: FqeHamiltonian,
         yield fqe_ham.e_0() * OpString([])
 
     mpo = hamil.build_mpo(generate_terms,
-                          const=0,
+                          const=0.0,
                           cutoff=cutoff,
                           max_bond_dim=max_bond_dim)
 
@@ -206,7 +206,7 @@ def get_diagonal_coulomb_mpo(fqe_ham: FqeHamiltonian,
         yield fqe_ham.e_0() * OpString([])
 
     mpo = hamil.build_mpo(generate_terms,
-                          const=0,
+                          const=0.0,
                           cutoff=cutoff,
                           max_bond_dim=max_bond_dim)
 
@@ -245,7 +245,7 @@ def get_diagonal_mpo(fqe_ham: FqeHamiltonian,
         yield fqe_ham.e_0() * OpString([])
 
     mpo = hamil.build_mpo(generate_terms,
-                          const=0,
+                          const=0.0,
                           cutoff=cutoff,
                           max_bond_dim=max_bond_dim)
 
