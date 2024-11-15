@@ -8,6 +8,7 @@ import numpy
 from pyblock3.hamiltonian import Hamiltonian
 from pyblock3.fcidump import FCIDUMP
 from pyblock3.algebra.mps import MPS
+from pyblock3.symbolic.symbolic import OpString
 
 
 allowed_types = [
@@ -108,9 +109,10 @@ def get_sparse_mpo(fqe_ham: FqeHamiltonian,
                                           alpha_terms,
                                           beta_terms)
             yield coeff * mpo_operators["alpha"] * mpo_operators["beta"]
+        yield fqe_ham.e_0() * OpString([])
 
     mpo = hamil.build_mpo(generate_terms,
-                          const=fqe_ham.e_0(),
+                          const=0.0,
                           cutoff=cutoff,
                           max_bond_dim=max_bond_dim)
 
@@ -201,9 +203,10 @@ def get_diagonal_coulomb_mpo(fqe_ham: FqeHamiltonian,
                         yield v[isite, jsite] \
                             * (c[isite, ispin] * c[jsite, jspin]
                                * d[jsite, jspin] * d[isite, ispin])
+        yield fqe_ham.e_0() * OpString([])
 
     mpo = hamil.build_mpo(generate_terms,
-                          const=fqe_ham.e_0(),
+                          const=0.0,
                           cutoff=cutoff,
                           max_bond_dim=max_bond_dim)
 
@@ -239,9 +242,10 @@ def get_diagonal_mpo(fqe_ham: FqeHamiltonian,
         for isite in range(n_sites):
             for ispin in [0, 1]:
                 yield t[isite] * (c[isite, ispin] * d[isite, ispin])
+        yield fqe_ham.e_0() * OpString([])
 
     mpo = hamil.build_mpo(generate_terms,
-                          const=fqe_ham.e_0(),
+                          const=0.0,
                           cutoff=cutoff,
                           max_bond_dim=max_bond_dim)
 
